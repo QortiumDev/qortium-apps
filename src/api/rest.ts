@@ -15,6 +15,18 @@ export async function fetchVoteCount(id: string): Promise<number> {
   } catch { return 0; }
 }
 
+export async function fetchResourceTimestamps(
+  service: string, name: string, identifier: string
+): Promise<{ updated?: number; created?: number } | null> {
+  try {
+    const res = await get<{ created?: number; updated?: number }[]>(
+      `/arbitrary/resources/search?service=${encodeURIComponent(service)}&name=${encodeURIComponent(name)}&identifier=${encodeURIComponent(identifier)}&mode=LATEST&limit=1&includestatus=false&includemetadata=false`
+    );
+    if (!Array.isArray(res) || res.length === 0) return null;
+    return { updated: res[0].updated, created: res[0].created };
+  } catch { return null; }
+}
+
 export async function fetchPrimaryName(address: string): Promise<string | null> {
   try {
     const res = await get<{ name: string | null }>(`/names/primary/${address}`);

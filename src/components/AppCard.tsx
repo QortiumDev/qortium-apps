@@ -10,7 +10,7 @@ import { tokens } from '../theme/tokens';
 import { favoritesAtom } from '../state/atoms';
 import { fetchVoteCount } from '../api/rest';
 import { openNewTab } from '../api/qortal';
-import { avatarColor, voteId as makeVoteId, resourceKey, serviceLabel } from '../utils/format';
+import { avatarColor, voteId as makeVoteId, resourceKey, serviceLabel, formatAge, formatDate } from '../utils/format';
 import { getCachedVotes, setCachedVotes } from '../utils/votesCache';
 import type { QdnResource } from '../types';
 
@@ -63,6 +63,8 @@ export function AppCard({ resource, onOpenDetail }: Props) {
         label: resource.identifier,
         category: '',
         addedAt: Date.now(),
+        updated: resource.updated,
+        created: resource.created,
       }];
     });
   }, [key, resource, setFavorites]);
@@ -187,7 +189,7 @@ export function AppCard({ resource, onOpenDetail }: Props) {
         </Box>
       </Box>
 
-      {/* Bottom row: votes + open button */}
+      {/* Bottom row: votes + publish date + open button */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* Vote count */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -201,6 +203,13 @@ export function AppCard({ resource, onOpenDetail }: Props) {
             )
           }
         </Box>
+
+        {/* Publish date */}
+        <Tooltip title={formatDate(resource.updated ?? resource.created)} placement="top">
+          <Typography sx={{ fontSize: '0.68rem', color: c.textSecondary, cursor: 'default' }}>
+            {formatAge(resource.updated ?? resource.created)}
+          </Typography>
+        </Tooltip>
 
         {/* Open button */}
         <Tooltip title="Open in new tab" placement="top">

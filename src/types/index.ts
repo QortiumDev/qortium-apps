@@ -24,6 +24,8 @@ export interface Favorite {
   label: string;
   category: string;
   addedAt: number;
+  updated?: number;
+  created?: number;
 }
 
 export type ServiceFilter = 'ALL' | 'APP' | 'WEBSITE';

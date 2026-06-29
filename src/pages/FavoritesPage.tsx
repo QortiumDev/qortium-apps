@@ -1,179 +1,16 @@
-import { useState, useMemo, useCallback, type MouseEvent } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useAtom } from 'jotai';
-import { Box, Typography, IconButton, Tooltip, InputBase, Button } from '@mui/material';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import EditIcon from '@mui/icons-material/Edit';
-import CheckIcon from '@mui/icons-material/Check';
+import { Box, Typography, Button } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
 import { favoritesAtom } from '../state/atoms';
-import { openNewTab } from '../api/qortal';
+import { AppCard } from '../components/AppCard';
 import { AppDetailDialog } from '../components/AppDetailDialog';
-import { avatarColor, serviceLabel } from '../utils/format';
-import type { Favorite, QdnResource } from '../types';
+import { fetchResourceTimestamps } from '../api/rest';
+import type { QdnResource } from '../types';
 
 const UNCATEGORIZED = '__none__';
-
-function FavRow({ fav, onOpen, onRemove, onOpenDetail, onCategoryChange }: {
-  fav: Favorite;
-  onOpen: (fav: Favorite) => void;
-  onRemove: (key: string) => void;
-  onOpenDetail: (fav: Favorite) => void;
-  onCategoryChange: (key: string, category: string) => void;
-}) {
-  const c = useColors();
-  const color  = avatarColor(fav.name + fav.identifier);
-  const letter = (fav.identifier?.[0] ?? fav.name?.[0] ?? '?').toUpperCase();
-
-  const [editing, setEditing]   = useState(false);
-  const [catVal, setCatVal]     = useState(fav.category);
-  const [opening, setOpening]   = useState(false);
-
-  const handleSave = () => {
-    onCategoryChange(fav.key, catVal);
-    setEditing(false);
-  };
-
-  const handleOpen = async () => {
-    setOpening(true);
-    try { await onOpen(fav); } finally { setOpening(false); }
-  };
-
-  return (
-    <Box
-      sx={{
-        display: 'flex', alignItems: 'center', gap: 1.5,
-        px: 2, py: 1.5,
-        borderBottom: `1px solid ${c.borderLight}`,
-        '&:last-child': { borderBottom: 'none' },
-        '&:hover': { bgcolor: c.borderLight },
-        transition: '0.12s ease',
-        cursor: 'pointer',
-      }}
-      onClick={() => !editing && onOpenDetail(fav)}
-    >
-      {/* Avatar */}
-      <Box
-        sx={{
-          width: 34, height: 34,
-          borderRadius: `${tokens.shape.radius / 2}px`,
-          bgcolor: color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
-        <Typography sx={{ color: '#fff', fontWeight: tokens.typography.weightBlack, fontSize: '0.95rem', lineHeight: 1, userSelect: 'none' }}>
-          {letter}
-        </Typography>
-      </Box>
-
-      {/* Name + category */}
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontWeight: tokens.typography.weightBold, fontSize: '0.85rem', color: c.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {fav.label || fav.identifier}
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          <Typography sx={{ fontSize: '0.68rem', color: c.textSecondary }}>
-            by {fav.name}
-          </Typography>
-          {!editing && fav.category && (
-            <Box
-              sx={{
-                fontSize: '0.58rem', fontWeight: tokens.typography.weightBold,
-                letterSpacing: '0.08em', textTransform: 'uppercase',
-                color: c.accent,
-                border: `1px solid ${c.accent}`,
-                borderRadius: '50px', px: 0.75, py: 0.1,
-                lineHeight: 1.6,
-              }}
-            >
-              {fav.category}
-            </Box>
-          )}
-        </Box>
-      </Box>
-
-      {/* Service badge */}
-      <Box
-        sx={{
-          fontSize: '0.58rem', fontWeight: tokens.typography.weightBold,
-          letterSpacing: '0.1em', textTransform: 'uppercase',
-          color: c.textSecondary,
-          border: `1px solid ${c.borderLight}`,
-          borderRadius: '3px', px: 0.75, py: 0.25, lineHeight: 1.6,
-          flexShrink: 0,
-        }}
-      >
-        {serviceLabel(fav.service)}
-      </Box>
-
-      {/* Category inline edit */}
-      {editing && (
-        <Box
-          onClick={(e: MouseEvent) => e.stopPropagation()}
-          sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-        >
-          <Box
-            sx={{
-              display: 'flex', alignItems: 'center',
-              border: `${tokens.shape.borderWidth} solid ${c.accent}`,
-              borderRadius: `${tokens.shape.radius}px`,
-              px: 1, height: 30,
-            }}
-          >
-            <InputBase
-              autoFocus
-              value={catVal}
-              onChange={e => setCatVal(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
-              placeholder="Category…"
-              sx={{ fontSize: '0.78rem', color: c.textPrimary, width: 110 }}
-            />
-          </Box>
-          <IconButton size="small" onClick={handleSave} sx={{ color: c.success, p: 0.5 }}>
-            <CheckIcon sx={{ fontSize: '0.9rem' }} />
-          </IconButton>
-        </Box>
-      )}
-
-      {/* Actions */}
-      {!editing && (
-        <Box onClick={(e: MouseEvent) => e.stopPropagation()} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-          <Tooltip title="Edit category" placement="top">
-            <IconButton
-              size="small"
-              onClick={() => { setEditing(true); setCatVal(fav.category); }}
-              sx={{ p: 0.5, borderRadius: `${tokens.shape.radius / 2}px`, color: c.textSecondary, '&:hover': { color: c.accent, bgcolor: 'transparent' } }}
-            >
-              <EditIcon sx={{ fontSize: '0.85rem' }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Open in new tab" placement="top">
-            <IconButton
-              size="small"
-              onClick={handleOpen}
-              disabled={opening}
-              sx={{ p: 0.5, borderRadius: `${tokens.shape.radius / 2}px`, color: c.textSecondary, '&:hover': { color: c.accent, bgcolor: 'transparent' } }}
-            >
-              <OpenInNewIcon sx={{ fontSize: '0.85rem' }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Remove from favorites" placement="top">
-            <IconButton
-              size="small"
-              onClick={() => onRemove(fav.key)}
-              sx={{ p: 0.5, borderRadius: `${tokens.shape.radius / 2}px`, color: c.textSecondary, '&:hover': { color: c.error, bgcolor: 'transparent' } }}
-            >
-              <DeleteOutlineIcon sx={{ fontSize: '0.85rem' }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      )}
-    </Box>
-  );
-}
 
 export function FavoritesPage() {
   const c = useColors();
@@ -181,11 +18,31 @@ export function FavoritesPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [detail, setDetail] = useState<QdnResource | null>(null);
 
+  // Backfill timestamps for favorites saved before this feature existed
+  useEffect(() => {
+    const missing = favorites.filter(f => f.updated == null && f.created == null);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      missing.map(async fav => {
+        const ts = await fetchResourceTimestamps(fav.service, fav.name, fav.identifier);
+        return { key: fav.key, updated: ts?.updated, created: ts?.created };
+      })
+    ).then(results => {
+      if (cancelled) return;
+      setFavorites(prev => prev.map(f => {
+        const r = results.find(x => x.key === f.key);
+        if (!r || (r.updated == null && r.created == null)) return f;
+        return { ...f, updated: r.updated, created: r.created };
+      }));
+    });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const categories = useMemo(() => {
     const cats = new Set<string>();
-    for (const f of favorites) {
-      if (f.category) cats.add(f.category);
-    }
+    for (const f of favorites) if (f.category) cats.add(f.category);
     return Array.from(cats).sort();
   }, [favorites]);
 
@@ -197,29 +54,24 @@ export function FavoritesPage() {
     return favorites.filter(f => f.category === activeCategory);
   }, [favorites, activeCategory]);
 
-  const handleRemove = useCallback((key: string) => {
-    setFavorites(prev => prev.filter(f => f.key !== key));
-  }, [setFavorites]);
+  const resources = useMemo<QdnResource[]>(() =>
+    visible.map(f => ({
+      service: f.service,
+      name: f.name,
+      identifier: f.identifier,
+      title: f.label || f.identifier,
+      updated: f.updated,
+      created: f.created,
+    })),
+    [visible]
+  );
 
-  const handleOpen = useCallback(async (fav: Favorite) => {
-    await openNewTab(fav.service, fav.name, fav.identifier);
+  const handleOpenDetail = useCallback((resource: QdnResource) => {
+    setDetail(resource);
   }, []);
-
-  const handleOpenDetail = useCallback((fav: Favorite) => {
-    setDetail({
-      service: fav.service,
-      name: fav.name,
-      identifier: fav.identifier,
-      title: fav.label || fav.identifier,
-    });
-  }, []);
-
-  const handleCategoryChange = useCallback((key: string, category: string) => {
-    setFavorites(prev => prev.map(f => f.key === key ? { ...f, category } : f));
-  }, [setFavorites]);
 
   const chipSx = (active: boolean) => ({
-    fontSize: '0.7rem',
+    fontSize: '0.72rem',
     fontWeight: tokens.typography.weightBold,
     letterSpacing: '0.08em',
     textTransform: 'uppercase' as const,
@@ -240,7 +92,7 @@ export function FavoritesPage() {
         pt: `${tokens.spacing.topBarHeight + 28}px`,
         pb: 6,
         px: { xs: 2, md: 4 },
-        maxWidth: 720,
+        maxWidth: 900,
         mx: 'auto',
       }}
     >
@@ -292,36 +144,30 @@ export function FavoritesPage() {
           ) : (
             <Box
               sx={{
-                bgcolor: c.surface,
-                border: `${tokens.shape.borderWidth} solid ${c.borderLight}`,
-                borderRadius: `${tokens.shape.radius}px`,
-                overflow: 'hidden',
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+                gap: 1.5,
               }}
             >
-              {visible.map(fav => (
-                <FavRow
-                  key={fav.key}
-                  fav={fav}
-                  onOpen={handleOpen}
-                  onRemove={handleRemove}
+              {resources.map(r => (
+                <AppCard
+                  key={`${r.service}|${r.name}|${r.identifier}`}
+                  resource={r}
                   onOpenDetail={handleOpenDetail}
-                  onCategoryChange={handleCategoryChange}
                 />
               ))}
             </Box>
           )}
 
-          {favorites.length > 0 && (
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button
-                size="small"
-                onClick={() => setFavorites([])}
-                sx={{ fontSize: '0.72rem', color: c.textSecondary, textTransform: 'none', '&:hover': { color: c.error, bgcolor: 'transparent' } }}
-              >
-                Clear all favorites
-              </Button>
-            </Box>
-          )}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Button
+              size="small"
+              onClick={() => setFavorites([])}
+              sx={{ fontSize: '0.72rem', color: c.textSecondary, textTransform: 'none', '&:hover': { color: c.error, bgcolor: 'transparent' } }}
+            >
+              Clear all favorites
+            </Button>
+          </Box>
         </>
       )}
 

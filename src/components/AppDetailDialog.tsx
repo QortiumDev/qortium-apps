@@ -36,6 +36,12 @@ export function AppDetailDialog({ resource, onClose }: Props) {
   const pName     = resource ? makeVoteId(resource.service, resource.name, resource.identifier) : '';
   const color     = resource ? avatarColor(resource.name + resource.identifier) : c.accent;
   const letter    = resource ? (resource.identifier?.[0] ?? resource.name?.[0] ?? '?').toUpperCase() : '';
+  const faviconSrc = resource
+    ? `/arbitrary/${resource.service}/${resource.name}/${resource.identifier}/favicon.ico`
+    : null;
+  const thumbSrc = resource?.name
+    ? `/arbitrary/THUMBNAIL/${resource.name}/avatar`
+    : null;
 
   const fav = favorites.find(f => f.key === key);
 
@@ -45,12 +51,16 @@ export function AppDetailDialog({ resource, onClose }: Props) {
   const [opening, setOpening]   = useState(false);
   const [category, setCategory] = useState(fav?.category ?? '');
   const [catEdited, setCatEdited] = useState(false);
+  const [faviconFailed, setFaviconFailed] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
 
   useEffect(() => {
     if (!resource) return;
     setVoteStatus('idle');
     setOpening(false);
     setCatEdited(false);
+    setFaviconFailed(false);
+    setThumbFailed(false);
 
     const c2 = getCachedVotes(pName);
     if (c2 !== undefined) {
@@ -187,11 +197,30 @@ export function AppDetailDialog({ resource, onClose }: Props) {
             bgcolor: color,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
+            overflow: 'hidden',
           }}
         >
-          <Typography sx={{ color: '#fff', fontWeight: tokens.typography.weightBlack, fontSize: '1.2rem', lineHeight: 1, userSelect: 'none' }}>
-            {letter}
-          </Typography>
+          {faviconSrc && !faviconFailed ? (
+            <Box
+              component="img"
+              src={faviconSrc}
+              alt=""
+              onError={() => setFaviconFailed(true)}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : thumbSrc && !thumbFailed ? (
+            <Box
+              component="img"
+              src={thumbSrc}
+              alt=""
+              onError={() => setThumbFailed(true)}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : (
+            <Typography sx={{ color: '#fff', fontWeight: tokens.typography.weightBlack, fontSize: '1.2rem', lineHeight: 1, userSelect: 'none' }}>
+              {letter}
+            </Typography>
+          )}
         </Box>
 
         <Box sx={{ flex: 1, minWidth: 0 }}>

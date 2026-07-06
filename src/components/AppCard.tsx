@@ -28,9 +28,13 @@ export function AppCard({ resource, onOpenDetail }: Props) {
   const pName = makeVoteId(resource.service, resource.name, resource.identifier);
   const color = avatarColor(resource.name + resource.identifier);
   const letter = (resource.identifier?.[0] ?? resource.name?.[0] ?? '?').toUpperCase();
+  const faviconSrc = resource.name && resource.identifier
+    ? `/arbitrary/${resource.service}/${resource.name}/${resource.identifier}/favicon.ico`
+    : null;
   const thumbSrc = resource.name
     ? `/arbitrary/THUMBNAIL/${resource.name}/avatar`
     : null;
+  const [faviconFailed, setFaviconFailed] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
 
   const isFav = favorites.some(f => f.key === key);
@@ -120,7 +124,15 @@ export function AppCard({ resource, onOpenDetail }: Props) {
             overflow: 'hidden',
           }}
         >
-          {thumbSrc && !thumbFailed ? (
+          {faviconSrc && !faviconFailed ? (
+            <Box
+              component="img"
+              src={faviconSrc}
+              alt=""
+              onError={() => setFaviconFailed(true)}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : thumbSrc && !thumbFailed ? (
             <Box
               component="img"
               src={thumbSrc}

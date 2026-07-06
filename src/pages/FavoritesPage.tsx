@@ -1,7 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useAtom } from 'jotai';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, IconButton, Tooltip } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
 import { favoritesAtom } from '../state/atoms';
@@ -17,6 +19,8 @@ export function FavoritesPage() {
   const [favorites, setFavorites] = useAtom(favoritesAtom);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [detail, setDetail] = useState<QdnResource | null>(null);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
 
   // Backfill timestamps for favorites saved before this feature existed
   useEffect(() => {
@@ -69,6 +73,30 @@ export function FavoritesPage() {
   const handleOpenDetail = useCallback((resource: QdnResource) => {
     setDetail(resource);
   }, []);
+
+  const handleReorder = useCallback((fromVis: number, toVis: number) => {
+    if (fromVis === toVis) return;
+    setFavorites(prev => {
+      const globalIndices = visible.map(v => prev.findIndex(f => f.key === v.key));
+      const movedGlobal = globalIndices[fromVis];
+      const newGlobalIndices = [...globalIndices];
+      newGlobalIndices.splice(fromVis, 1);
+      newGlobalIndices.splice(toVis, 0, movedGlobal);
+      const result = [...prev];
+      for (let i = 0; i < globalIndices.length; i++) {
+        result[globalIndices[i]] = prev[newGlobalIndices[i]];
+      }
+      return result;
+    });
+  }, [visible, setFavorites]);
+
+  const handleMoveUp = useCallback((visIdx: number) => {
+    if (visIdx > 0) handleReorder(visIdx, visIdx - 1);
+  }, [handleReorder]);
+
+  const handleMoveDown = useCallback((visIdx: number) => {
+    if (visIdx < visible.length - 1) handleReorder(visIdx, visIdx + 1);
+  }, [handleReorder, visible.length]);
 
   const chipSx = (active: boolean) => ({
     fontSize: '0.72rem',
@@ -149,12 +177,56 @@ export function FavoritesPage() {
                 gap: 1.5,
               }}
             >
-              {resources.map(r => (
-                <AppCard
+              {resources.map((r, i) => (
+                <Box
                   key={`${r.service}|${r.name}|${r.identifier}`}
-                  resource={r}
-                  onOpenDetail={handleOpenDetail}
-                />
+                  draggable
+                  onDragStart={(e: React.DragEvent) => { e.dataTransfer.effectAllowed = 'move'; setDragIdx(i); }}
+                  onDragOver={(e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (overIdx !== i) setOverIdx(i); }}
+                  onDrop={(e: React.DragEvent) => { e.preventDefault(); if (dragIdx !== null && dragIdx !== i) handleReorder(dragIdx, i); setDragIdx(null); setOverIdx(null); }}
+                  onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+                  sx={{
+                    position: 'relative',
+                    cursor: dragIdx === null ? 'grab' : 'grabbing',
+                    opacity: dragIdx === i ? 0.45 : 1,
+                    outline: overIdx === i && dragIdx !== null && dragIdx !== i ? `2px solid ${c.accent}` : '2px solid transparent',
+                    borderRadius: `${tokens.shape.radius}px`,
+                    transition: 'opacity 0.15s',
+                    '& .move-controls': { opacity: 0, transition: 'opacity 0.12s' },
+                    '&:hover .move-controls': { opacity: 1 },
+                  }}
+                >
+                  <AppCard resource={r} onOpenDetail={handleOpenDetail} />
+                  <Box
+                    className="move-controls"
+                    sx={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', gap: 0.25, zIndex: 2 }}
+                  >
+                    <Tooltip title="Move up" placement="right">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={e => { e.stopPropagation(); handleMoveUp(i); }}
+                          disabled={i === 0}
+                          sx={{ p: 0.25, width: 20, height: 20, bgcolor: `${c.surface}dd`, border: `1px solid ${c.borderLight}`, borderRadius: '3px', color: c.textSecondary, '&:hover': { color: c.accent, bgcolor: c.surface }, '&.Mui-disabled': { opacity: 0.25 } }}
+                        >
+                          <ArrowUpwardIcon sx={{ fontSize: '0.65rem' }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Move down" placement="right">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={e => { e.stopPropagation(); handleMoveDown(i); }}
+                          disabled={i === visible.length - 1}
+                          sx={{ p: 0.25, width: 20, height: 20, bgcolor: `${c.surface}dd`, border: `1px solid ${c.borderLight}`, borderRadius: '3px', color: c.textSecondary, '&:hover': { color: c.accent, bgcolor: c.surface }, '&.Mui-disabled': { opacity: 0.25 } }}
+                        >
+                          <ArrowDownwardIcon sx={{ fontSize: '0.65rem' }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </Box>
+                </Box>
               ))}
             </Box>
           )}

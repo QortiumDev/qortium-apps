@@ -28,6 +28,10 @@ export function AppCard({ resource, onOpenDetail }: Props) {
   const pName = makeVoteId(resource.service, resource.name, resource.identifier);
   const color = avatarColor(resource.name + resource.identifier);
   const letter = (resource.identifier?.[0] ?? resource.name?.[0] ?? '?').toUpperCase();
+  const thumbSrc = resource.name
+    ? `/arbitrary/THUMBNAIL/${resource.name}/avatar`
+    : null;
+  const [thumbFailed, setThumbFailed] = useState(false);
 
   const isFav = favorites.some(f => f.key === key);
 
@@ -105,7 +109,7 @@ export function AppCard({ resource, onOpenDetail }: Props) {
     >
       {/* Top row: avatar + name + service badge + favorite */}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-        {/* Colored letter avatar */}
+        {/* Thumbnail avatar */}
         <Box
           sx={{
             width: 40, height: 40,
@@ -113,11 +117,22 @@ export function AppCard({ resource, onOpenDetail }: Props) {
             bgcolor: color,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
+            overflow: 'hidden',
           }}
         >
-          <Typography sx={{ color: '#fff', fontWeight: tokens.typography.weightBlack, fontSize: '1.1rem', lineHeight: 1, userSelect: 'none' }}>
-            {letter}
-          </Typography>
+          {thumbSrc && !thumbFailed ? (
+            <Box
+              component="img"
+              src={thumbSrc}
+              alt=""
+              onError={() => setThumbFailed(true)}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : (
+            <Typography sx={{ color: '#fff', fontWeight: tokens.typography.weightBlack, fontSize: '1.1rem', lineHeight: 1, userSelect: 'none' }}>
+              {letter}
+            </Typography>
+          )}
         </Box>
 
         {/* Name + publisher */}

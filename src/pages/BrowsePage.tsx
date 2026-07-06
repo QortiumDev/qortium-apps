@@ -7,7 +7,9 @@ import { tokens } from '../theme/tokens';
 import { AppCard } from '../components/AppCard';
 import { AppDetailDialog } from '../components/AppDetailDialog';
 import { searchResources } from '../api/qortal';
-import { resourceKey } from '../utils/format';
+import { resourceKey, voteId as makeVoteId } from '../utils/format';
+import { fetchVoteCount } from '../api/rest';
+import { getCachedVotes, setCachedVotes } from '../utils/votesCache';
 import type { QdnResource, ServiceFilter, SortMode } from '../types';
 
 const LIMIT = 25;
@@ -63,6 +65,7 @@ export function BrowsePage() {
   const [hasMore, setHasMore]   = useState(true);
   const [offset, setOffset]     = useState(0);
   const [detail, setDetail]     = useState<QdnResource | null>(null);
+  const [voteMap, setVoteMap]   = useState<Record<string, number>>({});
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -138,11 +141,40 @@ export function BrowsePage() {
     }
   };
 
+  useEffect(() => {
+    if (sort !== 'voted' || resources.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      resources.map(r => {
+        const pName = makeVoteId(r.service, r.name, r.identifier);
+        const cached = getCachedVotes(pName);
+        if (cached !== undefined) return Promise.resolve([pName, cached] as const);
+        return fetchVoteCount(pName).then(count => {
+          setCachedVotes(pName, count);
+          return [pName, count] as const;
+        });
+      })
+    ).then(entries => {
+      if (cancelled) return;
+      setVoteMap(prev => {
+        const next = { ...prev };
+        for (const [key, count] of entries) next[key] = count;
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [sort, resources]);
+
   const sorted = [...resources].sort((a, b) => {
     if (sort === 'az') {
       return (a.identifier || a.name).localeCompare(b.identifier || b.name);
     }
-    return 0; // 'latest' is already sorted by server; 'voted' handled client-side by vote cache
+    if (sort === 'voted') {
+      const ka = makeVoteId(a.service, a.name, a.identifier);
+      const kb = makeVoteId(b.service, b.name, b.identifier);
+      return (voteMap[kb] ?? 0) - (voteMap[ka] ?? 0);
+    }
+    return 0; // 'latest' is already sorted by server
   });
 
   const chipSx = (active: boolean) => ({

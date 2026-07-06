@@ -53,7 +53,7 @@ export function TopBar() {
   }
 
   function handleOpenHelp() {
-    void qdnRequest({ action: 'OPEN_NEW_TAB', address: `qdn://APP/Help/Help?app=${APP_QDN_NAME}` });
+    void qdnRequest({ action: 'OPEN_NEW_TAB', address: `qdn://APP/Help/Help?new=${APP_QDN_NAME}` });
   }
 
   const iconBtnSx = (active: boolean) => ({

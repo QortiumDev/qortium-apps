@@ -14,6 +14,7 @@ import { useColors } from '../../theme/ColorTokensContext';
 import { tokens } from '../../theme/tokens';
 import { themeAtom } from '../../state/atoms';
 import { EnumTheme } from '../../types';
+import { RatingControl } from './RatingControl';
 
 const APP_QDN_NAME = 'Apps';
 
@@ -104,7 +105,9 @@ export function TopBar() {
 
       <Box sx={{ flex: 1 }} />
 
-      <Tooltip title={isFollowed ? 'Unfollow' : 'Follow'} placement="bottom">
+      <RatingControl qdnName={APP_QDN_NAME} />
+
+      <Tooltip title={isFollowed ? 'Stop following this app' : 'Follow this app'} placement="bottom">
         <IconButton
           size="small"
           onClick={() => void handleToggleFollow()}

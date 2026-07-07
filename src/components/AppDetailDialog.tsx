@@ -11,6 +11,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt';
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import LinkIcon from '@mui/icons-material/Link';
+import { useFaviconUrl } from '../hooks/useFaviconUrl';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
 import { favoritesAtom } from '../state/atoms';
@@ -36,9 +37,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
   const pName     = resource ? makeVoteId(resource.service, resource.name, resource.identifier) : '';
   const color     = resource ? avatarColor(resource.name + resource.identifier) : c.accent;
   const letter    = resource ? (resource.identifier?.[0] ?? resource.name?.[0] ?? '?').toUpperCase() : '';
-  const faviconSrc = resource
-    ? `/arbitrary/${resource.service}/${resource.name}/${resource.identifier}/favicon.ico`
-    : null;
+  const faviconUrl = useFaviconUrl(resource?.service ?? '', resource?.name ?? '', resource?.identifier ?? '');
   const thumbSrc = resource?.name
     ? `/arbitrary/THUMBNAIL/${resource.name}/avatar`
     : null;
@@ -200,10 +199,10 @@ export function AppDetailDialog({ resource, onClose }: Props) {
             overflow: 'hidden',
           }}
         >
-          {faviconSrc && !faviconFailed ? (
+          {faviconUrl && !faviconFailed ? (
             <Box
               component="img"
-              src={faviconSrc}
+              src={faviconUrl}
               alt=""
               onError={() => setFaviconFailed(true)}
               sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

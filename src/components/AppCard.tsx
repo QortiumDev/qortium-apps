@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAtom } from 'jotai';
+import { useFaviconUrl } from '../hooks/useFaviconUrl';
+import { useHasTransparentBg } from '../hooks/useHasTransparentBg';
 import { Box, Typography, IconButton, Tooltip, CircularProgress } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -28,14 +30,18 @@ export function AppCard({ resource, onOpenDetail }: Props) {
   const pName = makeVoteId(resource.service, resource.name, resource.identifier);
   const color = avatarColor(resource.name + resource.identifier);
   const letter = (resource.identifier?.[0] ?? resource.name?.[0] ?? '?').toUpperCase();
-  const faviconSrc = resource.name && resource.identifier
-    ? `/arbitrary/${resource.service}/${resource.name}/${resource.identifier}/favicon.ico`
-    : null;
+  const faviconUrl = useFaviconUrl(resource.service, resource.name, resource.identifier);
   const thumbSrc = resource.name
     ? `/arbitrary/THUMBNAIL/${resource.name}/avatar`
     : null;
   const [faviconFailed, setFaviconFailed] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
+
+  const showingFavicon = !!(faviconUrl && !faviconFailed);
+  const showingThumb = !showingFavicon && !!(thumbSrc && !thumbFailed);
+  const faviconTransparent = useHasTransparentBg(showingFavicon ? faviconUrl : null);
+  const thumbTransparent = useHasTransparentBg(showingThumb ? thumbSrc : null);
+  const avatarBgTransparent = showingFavicon ? faviconTransparent : (showingThumb ? thumbTransparent : false);
 
   const isFav = favorites.some(f => f.key === key);
 
@@ -118,16 +124,16 @@ export function AppCard({ resource, onOpenDetail }: Props) {
           sx={{
             width: 40, height: 40,
             borderRadius: `${tokens.shape.radius / 2}px`,
-            bgcolor: color,
+            bgcolor: avatarBgTransparent ? 'transparent' : color,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
             overflow: 'hidden',
           }}
         >
-          {faviconSrc && !faviconFailed ? (
+          {faviconUrl && !faviconFailed ? (
             <Box
               component="img"
-              src={faviconSrc}
+              src={faviconUrl}
               alt=""
               onError={() => setFaviconFailed(true)}
               sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

@@ -7,11 +7,14 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
 import { favoritesAtom } from '../state/atoms';
 import { fetchVoteCount } from '../api/rest';
 import { openNewTab } from '../api/qortal';
+import { useFollowedNames } from '../hooks/useFollowedNames';
 import { avatarColor, voteId as makeVoteId, resourceKey, serviceLabel, formatAge, formatDate } from '../utils/format';
 import { getCachedVotes, setCachedVotes } from '../utils/votesCache';
 import type { QdnResource } from '../types';
@@ -44,6 +47,7 @@ export function AppCard({ resource, onOpenDetail }: Props) {
   const avatarBgTransparent = showingFavicon ? faviconTransparent : (showingThumb ? thumbTransparent : false);
 
   const isFav = favorites.some(f => f.key === key);
+  const { isFollowed, toggle: toggleFollow } = useFollowedNames(resource.name);
 
   const cached = getCachedVotes(pName);
   const [votes, setVotes] = useState<number | null>(cached !== undefined ? cached : null);
@@ -216,6 +220,25 @@ export function AppCard({ resource, onOpenDetail }: Props) {
               {isFav
                 ? <FavoriteIcon sx={{ fontSize: '0.95rem' }} />
                 : <FavoriteBorderIcon sx={{ fontSize: '0.95rem' }} />
+              }
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title={isFollowed ? `Unfollow ${resource.name}` : `Follow ${resource.name}`} placement="top">
+            <IconButton
+              size="small"
+              onClick={toggleFollow}
+              sx={{
+                p: 0.5,
+                borderRadius: `${tokens.shape.radius / 2}px`,
+                color: isFollowed ? c.accent : c.textSecondary,
+                '&:hover': { color: c.accent, bgcolor: 'transparent' },
+                transition: '0.15s ease',
+              }}
+            >
+              {isFollowed
+                ? <PersonRemoveIcon sx={{ fontSize: '0.95rem' }} />
+                : <PersonAddIcon sx={{ fontSize: '0.95rem' }} />
               }
             </IconButton>
           </Tooltip>

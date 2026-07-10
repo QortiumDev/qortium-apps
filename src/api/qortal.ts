@@ -43,6 +43,21 @@ export async function ensureAccountUnlocked(): Promise<boolean> {
 
 // Each upvote = a METADATA resource published under the user's name with identifier=voteId.
 // Immediately queryable — no block confirmation needed, unlike CREATE_POLL.
+export async function getFollowedNames(): Promise<string[]> {
+  try {
+    const res = await qdnRequest({ action: 'GET_LIST', listName: 'followedNames' }) as string[];
+    return Array.isArray(res) ? res : [];
+  } catch { return []; }
+}
+
+export async function followName(name: string): Promise<void> {
+  await qdnRequest({ action: 'ADD_TO_LIST', listName: 'followedNames', items: [name] });
+}
+
+export async function unfollowName(name: string): Promise<void> {
+  await qdnRequest({ action: 'REMOVE_FROM_LIST', listName: 'followedNames', items: [name] });
+}
+
 export async function castVote(voteId: string): Promise<VoteResult> {
   let account: { address: string; name: string | null };
   try {

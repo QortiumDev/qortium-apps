@@ -22,13 +22,12 @@ export function FavoritesPage() {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
-  // Backfill timestamps for favorites saved before this feature existed
+  // Refresh timestamps for all favorites on mount so they reflect the current QDN state
   useEffect(() => {
-    const missing = favorites.filter(f => f.updated == null && f.created == null);
-    if (missing.length === 0) return;
+    if (favorites.length === 0) return;
     let cancelled = false;
     Promise.all(
-      missing.map(async fav => {
+      favorites.map(async fav => {
         const ts = await fetchResourceTimestamps(fav.service, fav.name, fav.identifier);
         return { key: fav.key, updated: ts?.updated, created: ts?.created };
       })

@@ -30,6 +30,5 @@ export const uiStyleAtom = atom<UiStyle>(_uiStyle);
 
 export const favoritesAtom = atomWithStorage<Favorite[]>('brs-favorites', []);
 
-export const accountAtom = atom<{ address: string; name: string | null } | null>(null);
 
 export const followedNamesAtom = atom<Set<string>>(new Set<string>());

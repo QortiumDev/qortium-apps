@@ -116,7 +116,7 @@ export function FavoritesPage() {
   return (
     <Box
       sx={{
-        pt: `${tokens.spacing.topBarHeight + 28}px`,
+        pt: `calc(var(--apps-top-bar-height, ${tokens.spacing.topBarHeight}px) + 28px)`,
         pb: 6,
         px: { xs: 2, md: 4 },
         maxWidth: 900,

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Box, Typography, InputBase, CircularProgress, Button, Skeleton } from '@mui/material';
+import { useAtomValue } from 'jotai';
+import { Box, Typography, InputBase, CircularProgress, Button, IconButton, Skeleton } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { useColors } from '../theme/ColorTokensContext';
@@ -9,6 +10,7 @@ import { AppDetailDialog } from '../components/AppDetailDialog';
 import { searchResources } from '../api/qortal';
 import { resourceKey } from '../utils/format';
 import type { QdnResource, ServiceFilter, SortMode } from '../types';
+import { uiStyleAtom } from '../state/atoms';
 
 const LIMIT = 25;
 
@@ -26,12 +28,14 @@ const SORT_OPTS: { value: SortMode; label: string }[] = [
 
 function CardSkeleton() {
   const c = useColors();
+  const isFun = useAtomValue(uiStyleAtom) === 'fun';
   return (
     <Box
       sx={{
         bgcolor: c.surface,
-        border: `${tokens.shape.borderWidth} solid ${c.borderLight}`,
-        borderRadius: `${tokens.shape.radius}px`,
+        border: `${isFun ? '3px' : tokens.shape.borderWidth} solid ${isFun ? c.outline : c.borderLight}`,
+        borderRadius: isFun ? c.radiusMd : `${tokens.shape.radius}px`,
+        boxShadow: isFun ? c.shadowCard : 'none',
         px: 1.5, py: 1,
         display: 'flex', alignItems: 'center', gap: 1,
       }}
@@ -52,6 +56,7 @@ function CardSkeleton() {
 
 export function BrowsePage() {
   const c = useColors();
+  const isFun = useAtomValue(uiStyleAtom) === 'fun';
 
   const [search, setSearch]     = useState('');
   const [filter, setFilter]     = useState<ServiceFilter>('ALL');
@@ -180,17 +185,27 @@ export function BrowsePage() {
   const chipSx = (active: boolean) => ({
     fontSize: '0.72rem',
     fontWeight: tokens.typography.weightBold,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase' as const,
+    fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
+    letterSpacing: isFun ? 0 : '0.08em',
+    textTransform: isFun ? 'none' as const : 'uppercase' as const,
     color: active ? c.accentText : c.textSecondary,
     bgcolor: active ? c.accent : 'transparent',
-    border: `1px solid ${active ? c.accent : c.borderLight}`,
-    borderRadius: '50px',
+    border: `${isFun ? '2px' : '1px'} solid ${active ? c.accent : isFun ? c.outline : c.borderLight}`,
+    borderRadius: isFun ? c.radiusPill : '50px',
+    boxShadow: isFun ? c.shadowControl : 'none',
+    appearance: 'none',
+    font: 'inherit',
+    margin: 0,
     px: 1.5, py: 0.5,
     cursor: 'pointer',
     userSelect: 'none' as const,
-    transition: '0.12s ease',
-    '&:hover': { borderColor: c.accent, color: active ? c.accentText : c.accent },
+    transition: c.transitionControl,
+    '&:hover': {
+      borderColor: isFun ? c.outline : c.accent,
+      color: active ? c.accentText : c.accent,
+      bgcolor: active ? c.accent : isFun ? c.controlHover : 'transparent',
+      transform: isFun ? 'translate(-1px, -1px)' : 'none',
+    },
   });
 
   return (
@@ -210,7 +225,8 @@ export function BrowsePage() {
       <Typography
         sx={{
           fontSize: '0.62rem', fontWeight: tokens.typography.weightBold,
-          letterSpacing: '0.14em', textTransform: 'uppercase',
+          fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
+          letterSpacing: isFun ? 0 : '0.14em', textTransform: isFun ? 'none' : 'uppercase',
           color: c.textSecondary, mb: 2,
         }}
       >
@@ -221,11 +237,16 @@ export function BrowsePage() {
       <Box
         sx={{
           display: 'flex', alignItems: 'center', gap: 1,
-          border: `${tokens.shape.borderWidth} solid ${c.borderLight}`,
-          borderRadius: `${tokens.shape.radius}px`,
-          px: 1.5, height: 44, mb: 2,
-          '&:focus-within': { borderColor: c.accent },
-          transition: '0.15s ease',
+          border: `${isFun ? '2px' : tokens.shape.borderWidth} solid ${isFun ? c.outline : c.borderLight}`,
+          borderRadius: isFun ? c.radiusSm : `${tokens.shape.radius}px`,
+          boxShadow: isFun ? c.shadowControl : 'none',
+          px: 1.5, minHeight: 44, mb: 2,
+          '&:focus-within': {
+            borderColor: isFun ? c.outline : c.accent,
+            outline: isFun ? `3px solid ${c.focusOutline}` : 'none',
+            outlineOffset: isFun ? 3 : 0,
+          },
+          transition: c.transitionControl,
           bgcolor: c.surface,
         }}
       >
@@ -252,23 +273,26 @@ export function BrowsePage() {
           }}
         />
         {search && (
-          <Box
+          <IconButton
+            aria-label="Clear search"
+            size="small"
             onClick={handleClearSearch}
             sx={{
               cursor: 'pointer', flexShrink: 0,
+              borderRadius: isFun ? c.radiusSm : `${tokens.shape.radius}px`,
               color: c.textSecondary, display: 'flex', alignItems: 'center',
               '&:hover': { color: c.textPrimary },
             }}
           >
             <ClearIcon sx={{ fontSize: '0.9rem' }} />
-          </Box>
+          </IconButton>
         )}
       </Box>
 
       {/* Filters + Sort row */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3, flexWrap: 'wrap' }}>
         {SERVICE_OPTS.map(({ value, label }) => (
-          <Box key={value} onClick={() => setFilter(value)} sx={chipSx(filter === value)}>
+          <Box component="button" type="button" key={value} onClick={() => setFilter(value)} sx={chipSx(filter === value)}>
             {label}
           </Box>
         ))}
@@ -278,6 +302,8 @@ export function BrowsePage() {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           {SORT_OPTS.map(({ value, label }) => (
             <Box
+              component="button"
+              type="button"
               key={value}
               onClick={() => setSort(value)}
               sx={{
@@ -296,7 +322,7 @@ export function BrowsePage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 380px), 1fr))',
             gap: 1,
           }}
         >
@@ -308,6 +334,13 @@ export function BrowsePage() {
             textAlign: 'center',
             py: 10,
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5,
+            ...(isFun && {
+              bgcolor: c.surface,
+              border: `3px solid ${c.outline}`,
+              borderRadius: c.radiusMd,
+              boxShadow: c.shadowCard,
+              px: 2,
+            }),
           }}
         >
           <SearchIcon sx={{ fontSize: '2.5rem', color: c.borderLight }} />
@@ -328,7 +361,7 @@ export function BrowsePage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 380px), 1fr))',
             gap: 1,
           }}
         >
@@ -352,7 +385,7 @@ export function BrowsePage() {
             startIcon={loadingMore ? <CircularProgress size={14} sx={{ color: c.accent }} /> : undefined}
             sx={{
               borderColor: c.borderLight, color: c.textSecondary,
-              borderRadius: '50px', px: 3,
+              borderRadius: isFun ? c.radiusPill : '50px', px: 3,
               '&:hover': { borderColor: c.accent, color: c.accent, bgcolor: 'transparent' },
               '&.Mui-disabled': { opacity: 0.4 },
             }}

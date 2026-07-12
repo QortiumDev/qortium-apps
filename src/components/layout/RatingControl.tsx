@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useAtomValue } from 'jotai';
 import { Box, IconButton, Popover, Tooltip, Typography } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { useColors } from '../../theme/ColorTokensContext';
 import { tokens } from '../../theme/tokens';
+import { uiStyleAtom } from '../../state/atoms';
 
 function requestQdn(options: { action: string; [key: string]: unknown }): Promise<unknown> {
   if (typeof qdnRequest !== 'function') {
@@ -29,10 +31,12 @@ function isBridgeMessage(e: MessageEvent<unknown>, action: string): boolean {
 
 export function RatingControl({ qdnName, service = 'APP', identifier = 'default' }: { qdnName: string; service?: string; identifier?: string }) {
   const c = useColors();
+  const uiStyle = useAtomValue(uiStyleAtom);
   const [summary, setSummary] = useState<RatingSummary>({ ratingCount: 0, weightedAverageRating: null });
   const [myRating, setMyRating] = useState<number | null>(null);
   const [canRate, setCanRate] = useState(false);
-  const [isClassic, setIsClassic] = useState(document.documentElement.dataset.ui === 'classic');
+  const isClassic = uiStyle === 'classic';
+  const isFun = uiStyle === 'fun';
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [hovered, setHovered] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -84,13 +88,10 @@ export function RatingControl({ qdnName, service = 'APP', identifier = 'default'
       })
       .catch(() => {});
 
-    // The account's own rating changes when the selected account does, and the
-    // control has no other way to observe uiStyle flips after mount.
+    // The account's own rating changes when the selected account does.
     function onMessage(e: MessageEvent<unknown>) {
       if (isBridgeMessage(e, 'SELECTED_ACCOUNT_CHANGED')) {
         fetchRating();
-      } else if (isBridgeMessage(e, 'UI_STYLE_CHANGED')) {
-        setIsClassic((e.data as { uiStyle?: unknown }).uiStyle === 'classic');
       }
     }
     window.addEventListener('message', onMessage);
@@ -125,12 +126,28 @@ export function RatingControl({ qdnName, service = 'APP', identifier = 'default'
           size="small"
           onClick={(e) => setAnchor(e.currentTarget)}
           sx={{
-            borderRadius: `${isClassic ? tokens.shape.radiusMd : tokens.shape.radius}px`,
+            border: isFun ? `2px solid ${c.outline}` : 'none',
+            borderRadius: isFun
+              ? c.radiusSm
+              : `${isClassic ? tokens.shape.radiusMd : tokens.shape.radius}px`,
+            boxShadow: isFun ? c.shadowControl : 'none',
+            minHeight: isFun ? 44 : undefined,
+            minWidth: isFun ? 44 : undefined,
             color: hasMyRating ? c.accent : c.textSecondary,
             gap: 0.5,
             px: average !== null ? 1 : undefined,
-            '&:hover': { color: c.accent, bgcolor: isClassic ? c.controlHover : c.borderLight },
-            transition: '0.15s ease',
+            bgcolor: isFun ? c.controlBg : 'transparent',
+            '&:hover': {
+              color: c.accent,
+              bgcolor: isClassic || isFun ? c.controlHover : c.borderLight,
+              boxShadow: isFun ? c.shadowPrimaryButtonHover : 'none',
+              transform: isFun ? 'translate(-1px, -2px) rotate(-0.2deg)' : 'none',
+            },
+            '&:active': {
+              boxShadow: isFun ? c.shadowControlActive : 'none',
+              transform: isFun ? 'translate(2px, 2px) scale(0.98)' : 'none',
+            },
+            transition: c.transitionControl,
           }}
           aria-label="rate this app"
         >
@@ -153,10 +170,14 @@ export function RatingControl({ qdnName, service = 'APP', identifier = 'default'
           paper: {
             sx: {
               bgcolor: c.surface,
-              border: `${isClassic ? tokens.shape.classicBorderWidth : tokens.shape.borderWidth} solid ${isClassic ? c.border : c.borderLight}`,
-              borderRadius: `${isClassic ? tokens.shape.radiusMd : tokens.shape.radius}px`,
+              border: `${isFun ? '3px' : isClassic ? tokens.shape.classicBorderWidth : tokens.shape.borderWidth} solid ${isClassic || isFun ? c.border : c.borderLight}`,
+              borderRadius: isFun
+                ? c.radiusMd
+                : `${isClassic ? tokens.shape.radiusMd : tokens.shape.radius}px`,
+              boxShadow: isFun ? c.shadowPop : undefined,
               p: 1.5,
               minWidth: 240,
+              maxWidth: 'calc(100vw - 24px)',
             },
           },
         }}

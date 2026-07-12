@@ -1,20 +1,17 @@
 import { atom } from 'jotai';
 import { atomWithStorage } from 'jotai/utils';
 import { EnumTheme, type Favorite } from '../types';
+import { normalizeUiStyle, type UiStyle } from '../displaySettings';
 
-export type UiStyle = 'classic' | 'modern';
-
-const UI_STYLES = new Set<UiStyle>(['classic', 'modern']);
 const _p = new URLSearchParams(window.location.search);
 const _theme = _p.get('theme') === 'light' ? EnumTheme.LIGHT : EnumTheme.DARK;
 const _accent = _p.get('accent') ?? 'green';
 const _textSize = _p.get('textSize') ?? 'medium';
 const _lang = _p.get('lang') ?? 'en';
-const _uiStyle = parseUiStyle(_p.get('uiStyle'));
+const _uiStyle = normalizeUiStyle(_p.get('uiStyle'));
 
-export function parseUiStyle(value: string | null): UiStyle {
-  return value && UI_STYLES.has(value as UiStyle) ? (value as UiStyle) : 'classic';
-}
+export const parseUiStyle = normalizeUiStyle;
+export type { UiStyle } from '../displaySettings';
 
 document.documentElement.dataset.theme = _theme;
 document.documentElement.dataset.accent = _accent;

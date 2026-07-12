@@ -34,6 +34,8 @@ export function TopBar() {
   const [isFollowed, setIsFollowed] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const isClassic = uiStyle === 'classic';
+  const isFun = uiStyle === 'fun';
+  const usesAdaptiveHeader = isClassic || isFun;
 
   useEffect(() => {
     qdnRequest({ action: 'GET_LIST', listName: 'followedNames' })
@@ -61,7 +63,7 @@ export function TopBar() {
     const observer = new ResizeObserver(updateHeight);
     observer.observe(header);
     return () => observer.disconnect();
-  }, [isClassic]);
+  }, [uiStyle]);
 
   async function handleToggleFollow() {
     if (followBusy) return;
@@ -92,14 +94,28 @@ export function TopBar() {
   }
 
   const buttonSx = {
-    borderRadius: `${isClassic ? tokens.shape.radiusMd : tokens.shape.radius}px`,
+    border: isFun ? `2px solid ${c.outline}` : 'none',
+    borderRadius: isFun
+      ? c.radiusSm
+      : `${isClassic ? tokens.shape.radiusMd : tokens.shape.radius}px`,
+    boxShadow: isFun ? c.shadowControl : 'none',
     minWidth: 44,
     minHeight: 44,
     width: 44,
     height: 44,
     p: 0,
     color: c.textSecondary,
-    '&:hover': { color: c.accent, bgcolor: isClassic ? c.controlHover : c.borderLight },
+    bgcolor: isFun ? c.controlBg : 'transparent',
+    '&:hover': {
+      color: c.accent,
+      bgcolor: isClassic || isFun ? c.controlHover : c.borderLight,
+      boxShadow: isFun ? c.shadowPrimaryButtonHover : 'none',
+      transform: isFun ? 'translate(-1px, -2px) rotate(-0.2deg)' : 'none',
+    },
+    '&:active': {
+      boxShadow: isFun ? c.shadowControlActive : 'none',
+      transform: isFun ? 'translate(2px, 2px) scale(0.98)' : 'none',
+    },
     transition: c.transitionControl,
   };
 
@@ -113,24 +129,25 @@ export function TopBar() {
         maxWidth: '100vw',
         boxSizing: 'border-box',
         overflow: 'hidden',
-        height: isClassic ? 'auto' : tokens.spacing.topBarHeight,
-        minHeight: isClassic ? 'auto' : tokens.spacing.topBarHeight,
+        height: usesAdaptiveHeader ? 'auto' : tokens.spacing.topBarHeight,
+        minHeight: usesAdaptiveHeader ? 'auto' : tokens.spacing.topBarHeight,
         bgcolor: c.surface,
-        borderBottom: `${isClassic ? tokens.shape.classicBorderWidth : tokens.shape.borderWidth} solid ${isClassic ? c.border : c.borderLight}`,
-        boxShadow: isClassic ? c.topBarShadow : 'none',
+        borderBottom: `${isFun ? '3px' : isClassic ? tokens.shape.classicBorderWidth : tokens.shape.borderWidth} solid ${isClassic || isFun ? c.border : c.borderLight}`,
+        boxShadow: usesAdaptiveHeader ? c.topBarShadow : 'none',
         display: 'grid',
-        gridTemplateColumns: isClassic
+        gridTemplateColumns: usesAdaptiveHeader
           ? { xs: 'minmax(0, 1fr) auto', sm: 'minmax(0, 1fr) auto auto' }
           : 'minmax(0, 1fr) auto auto',
         alignItems: 'center',
-        px: isClassic ? { xs: 1.25, sm: 1.75 } : 2,
-        py: isClassic ? 1 : 0,
-        gap: isClassic ? 1 : 0.5,
+        px: usesAdaptiveHeader ? { xs: 1.25, sm: 1.75 } : 2,
+        py: usesAdaptiveHeader ? 1 : 0,
+        gap: usesAdaptiveHeader ? 1 : 0.5,
         zIndex: 100,
       }}
     >
       <Box sx={{
         fontWeight: tokens.typography.weightBlack,
+        fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
         fontSize: '1rem',
         color: c.textPrimary,
         minWidth: 0,
@@ -144,10 +161,10 @@ export function TopBar() {
       <Box sx={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: isClassic ? { xs: 'center', sm: 'flex-start' } : 'flex-start',
-        gap: isClassic ? 0.5 : 0.25,
-        gridColumn: isClassic ? { xs: '1 / -1', sm: 'auto' } : 'auto',
-        gridRow: isClassic ? { xs: 2, sm: 'auto' } : 'auto',
+        justifyContent: usesAdaptiveHeader ? { xs: 'center', sm: 'flex-start' } : 'flex-start',
+        gap: usesAdaptiveHeader ? 0.5 : 0.25,
+        gridColumn: usesAdaptiveHeader ? { xs: '1 / -1', sm: 'auto' } : 'auto',
+        gridRow: usesAdaptiveHeader ? { xs: 2, sm: 'auto' } : 'auto',
         minWidth: 0,
       }}>
         {NAV.map(({ path, label, activeIcon, idleIcon }) => {
@@ -159,7 +176,8 @@ export function TopBar() {
                 sx={{
                   ...buttonSx,
                   color: active ? c.accent : c.textSecondary,
-                  bgcolor: active && isClassic ? c.controlSelected : 'transparent',
+                  bgcolor: active && (isClassic || isFun) ? c.controlSelected : isFun ? c.controlBg : 'transparent',
+                  boxShadow: active && isFun ? c.shadowTabActive : isFun ? c.shadowControl : 'none',
                 }}
               >
                 {active ? activeIcon : idleIcon}
@@ -173,9 +191,9 @@ export function TopBar() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        gap: isClassic ? 0.5 : 0.25,
-        gridColumn: isClassic ? { xs: 2, sm: 'auto' } : 'auto',
-        gridRow: isClassic ? { xs: 1, sm: 'auto' } : 'auto',
+        gap: usesAdaptiveHeader ? 0.5 : 0.25,
+        gridColumn: usesAdaptiveHeader ? { xs: 2, sm: 'auto' } : 'auto',
+        gridRow: usesAdaptiveHeader ? { xs: 1, sm: 'auto' } : 'auto',
       }}>
         <RatingControl qdnName={APP_QDN_NAME} identifier={APP_QDN_IDENTIFIER} />
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import {
   Box, Dialog, Typography, IconButton, Button,
   InputBase, Tooltip, CircularProgress, Divider,
@@ -12,7 +12,7 @@ import LinkIcon from '@mui/icons-material/Link';
 import { useFaviconUrl } from '../hooks/useFaviconUrl';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
-import { favoritesAtom } from '../state/atoms';
+import { favoritesAtom, uiStyleAtom } from '../state/atoms';
 import { fetchNameInfo, fetchPrimaryName, fetchResourceMeta, type NameInfo, type ResourceMeta } from '../api/rest';
 import { openNewTab } from '../api/qortal';
 import { appLink } from '../apps';
@@ -27,6 +27,7 @@ interface Props {
 
 export function AppDetailDialog({ resource, onClose }: Props) {
   const c = useColors();
+  const isFun = useAtomValue(uiStyleAtom) === 'fun';
   const [favorites, setFavorites] = useAtom(favoritesAtom);
 
   const key       = resource ? resourceKey(resource.service, resource.name, resource.identifier) : '';
@@ -152,6 +153,14 @@ export function AppDetailDialog({ resource, onClose }: Props) {
   const size             = resource.size        ?? freshMeta?.size;
   const created          = resource.created     ?? freshMeta?.created;
   const updated          = resource.updated     ?? freshMeta?.updated;
+  const sectionLabelSx = {
+    fontSize: '0.62rem',
+    fontWeight: tokens.typography.weightBold,
+    fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
+    letterSpacing: isFun ? 0 : '0.12em',
+    textTransform: isFun ? 'none' as const : 'uppercase' as const,
+    color: c.textSecondary,
+  };
 
   return (
     <Dialog
@@ -160,11 +169,12 @@ export function AppDetailDialog({ resource, onClose }: Props) {
       maxWidth="sm"
       fullWidth
       PaperProps={{
+        className: 'app-detail-dialog',
         sx: {
           bgcolor: c.surface,
-          border: `${tokens.shape.borderWidth} solid ${c.borderLight}`,
-          borderRadius: 0,
-          boxShadow: '0 8px 40px rgba(0,0,0,0.35)',
+          border: `${isFun ? '3px' : tokens.shape.borderWidth} solid ${isFun ? c.outline : c.borderLight}`,
+          borderRadius: isFun ? c.radiusMd : 0,
+          boxShadow: isFun ? c.shadowModal : '0 8px 40px rgba(0,0,0,0.35)',
           m: 2,
         },
       }}
@@ -172,16 +182,16 @@ export function AppDetailDialog({ resource, onClose }: Props) {
       {/* Header */}
       <Box
         sx={{
-          display: 'flex', alignItems: 'center',
-          px: 3, py: 2,
-          borderBottom: `${tokens.shape.borderWidth} solid ${c.borderLight}`,
-          gap: 2,
+          display: 'flex', alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' },
+          px: { xs: 1.5, sm: 3 }, py: 2,
+          borderBottom: `${isFun ? '3px' : tokens.shape.borderWidth} solid ${isFun ? c.outline : c.borderLight}`,
+          gap: { xs: 1, sm: 2 },
         }}
       >
         <Box
           sx={{
             width: 44, height: 44,
-            borderRadius: `${tokens.shape.radius / 2}px`,
+            borderRadius: isFun ? c.radiusSm : `${tokens.shape.radius / 2}px`,
             bgcolor: color,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
@@ -212,7 +222,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
         </Box>
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: tokens.typography.weightBold, fontSize: '0.95rem', color: c.textPrimary, lineHeight: 1.3 }}>
+          <Typography sx={{ fontFamily: isFun ? c.headingFontFamily : c.fontFamily, fontWeight: tokens.typography.weightBold, fontSize: '0.95rem', color: c.textPrimary, lineHeight: 1.3, overflowWrap: 'anywhere' }}>
             {title || resource.identifier}
           </Typography>
           {title && title !== resource.identifier && (
@@ -225,11 +235,13 @@ export function AppDetailDialog({ resource, onClose }: Props) {
         <Box
           sx={{
             fontSize: '0.6rem', fontWeight: tokens.typography.weightBold,
-            letterSpacing: '0.1em', textTransform: 'uppercase',
+            fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
+            letterSpacing: isFun ? 0 : '0.1em', textTransform: isFun ? 'none' : 'uppercase',
             color: c.textSecondary,
-            border: `1px solid ${c.borderLight}`,
-            borderRadius: '3px', px: 0.75, py: 0.25, lineHeight: 1.6,
+            border: `${isFun ? '2px' : '1px'} solid ${isFun ? c.outline : c.borderLight}`,
+            borderRadius: isFun ? c.radiusPill : '3px', px: 0.75, py: 0.25, lineHeight: 1.6,
             flexShrink: 0,
+            display: { xs: 'none', sm: 'block' },
           }}
         >
           {serviceLabel(resource.service)}
@@ -238,19 +250,19 @@ export function AppDetailDialog({ resource, onClose }: Props) {
         <IconButton
           onClick={onClose}
           size="small"
-          sx={{ borderRadius: `${tokens.shape.radius}px`, color: c.textSecondary, '&:hover': { color: c.textPrimary, bgcolor: c.borderLight } }}
+          sx={{ border: isFun ? `2px solid ${c.outline}` : 'none', borderRadius: isFun ? c.radiusSm : `${tokens.shape.radius}px`, boxShadow: isFun ? c.shadowControl : 'none', bgcolor: isFun ? c.controlBg : 'transparent', color: c.textSecondary, '&:hover': { color: c.textPrimary, bgcolor: isFun ? c.controlHover : c.borderLight } }}
         >
           <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
 
       {/* Body */}
-      <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Box sx={{ p: { xs: 1.5, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
 
         {/* Publisher row */}
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
           <Box>
-            <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 0.25 }}>
+            <Typography sx={{ ...sectionLabelSx, mb: 0.25 }}>
               Publisher
             </Typography>
             <Typography sx={{ fontSize: '0.82rem', color: c.textPrimary, fontWeight: tokens.typography.weightMedium }}>
@@ -283,7 +295,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
         {/* Description */}
         {description && (
           <Box>
-            <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 0.5 }}>
+            <Typography sx={{ ...sectionLabelSx, mb: 0.5 }}>
               Description
             </Typography>
             <Typography sx={{ fontSize: '0.82rem', color: c.textPrimary, lineHeight: 1.5 }}>
@@ -299,10 +311,11 @@ export function AppDetailDialog({ resource, onClose }: Props) {
               <Box
                 sx={{
                   fontSize: '0.65rem', fontWeight: tokens.typography.weightBold,
-                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
+                  letterSpacing: isFun ? 0 : '0.08em', textTransform: isFun ? 'none' : 'uppercase',
                   color: c.accent,
                   border: `1px solid ${c.accent}`,
-                  borderRadius: '50px', px: 1, py: 0.25,
+                  borderRadius: isFun ? c.radiusPill : '50px', px: 1, py: 0.25,
                 }}
               >
                 {formatCategory(resourceCategory)}
@@ -313,10 +326,11 @@ export function AppDetailDialog({ resource, onClose }: Props) {
                 key={tag}
                 sx={{
                   fontSize: '0.65rem', fontWeight: tokens.typography.weightBold,
-                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
+                  letterSpacing: isFun ? 0 : '0.08em', textTransform: isFun ? 'none' : 'uppercase',
                   color: c.textSecondary,
-                  border: `1px solid ${c.borderLight}`,
-                  borderRadius: '50px', px: 1, py: 0.25,
+                  border: `${isFun ? '2px' : '1px'} solid ${isFun ? c.outline : c.borderLight}`,
+                  borderRadius: isFun ? c.radiusPill : '50px', px: 1, py: 0.25,
                 }}
               >
                 {tag}
@@ -326,10 +340,10 @@ export function AppDetailDialog({ resource, onClose }: Props) {
         )}
 
         {/* Meta: size + dates */}
-        <Box sx={{ display: 'flex', gap: 3 }}>
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
           {size !== undefined && (
             <Box>
-              <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 0.25 }}>
+              <Typography sx={{ ...sectionLabelSx, mb: 0.25 }}>
                 Size
               </Typography>
               <Typography sx={{ fontSize: '0.8rem', color: c.textPrimary, fontFamily: 'monospace' }}>
@@ -339,7 +353,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
           )}
           {created !== undefined && (
             <Box>
-              <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 0.25 }}>
+              <Typography sx={{ ...sectionLabelSx, mb: 0.25 }}>
                 Published
               </Typography>
               <Typography sx={{ fontSize: '0.8rem', color: c.textPrimary }}>
@@ -349,7 +363,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
           )}
           {updated !== undefined && updated !== created && (
             <Box>
-              <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 0.25 }}>
+              <Typography sx={{ ...sectionLabelSx, mb: 0.25 }}>
                 Updated
               </Typography>
               <Typography sx={{ fontSize: '0.8rem', color: c.textPrimary }}>
@@ -363,7 +377,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
 
         {/* Rating section */}
         <Box>
-          <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 1 }}>
+          <Typography sx={{ ...sectionLabelSx, mb: 1 }}>
             Community Rating
           </Typography>
           <RatingControl qdnName={resource.name} service={resource.service} identifier={resource.identifier} />
@@ -373,11 +387,11 @@ export function AppDetailDialog({ resource, onClose }: Props) {
 
         {/* Favorites section */}
         <Box>
-          <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 1 }}>
+          <Typography sx={{ ...sectionLabelSx, mb: 1 }}>
             Favorites
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
               <Button
                 variant={fav ? 'contained' : 'outlined'}
                 size="small"
@@ -386,11 +400,11 @@ export function AppDetailDialog({ resource, onClose }: Props) {
                 onClick={handleToggleFav}
                 sx={fav
                   ? {
-                    bgcolor: c.error, color: '#fff', borderRadius: '50px',
+                    bgcolor: c.error, color: '#fff', borderRadius: isFun ? c.radiusPill : '50px',
                     '&:hover': { bgcolor: c.error },
                   }
                   : {
-                    borderColor: c.accent, color: c.accent, borderRadius: '50px',
+                    borderColor: c.accent, color: c.accent, borderRadius: isFun ? c.radiusPill : '50px',
                     '&:hover': { bgcolor: c.borderLight, borderColor: c.accent },
                   }
                 }
@@ -406,16 +420,22 @@ export function AppDetailDialog({ resource, onClose }: Props) {
             </Box>
 
             {fav && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                 <Box
                   sx={{
                     flex: 1,
                     display: 'flex', alignItems: 'center',
-                    border: `${tokens.shape.borderWidth} solid ${catEdited ? c.accent : c.borderLight}`,
-                    borderRadius: `${tokens.shape.radius}px`,
-                    px: 1.5, height: 34,
-                    '&:focus-within': { borderColor: c.accent },
-                    transition: '0.15s ease',
+                    border: `${isFun ? '2px' : tokens.shape.borderWidth} solid ${catEdited ? c.accent : isFun ? c.outline : c.borderLight}`,
+                    borderRadius: isFun ? c.radiusSm : `${tokens.shape.radius}px`,
+                    boxShadow: isFun ? c.shadowControl : 'none',
+                    px: 1.5, minHeight: 34,
+                    minWidth: { xs: '100%', sm: 0 },
+                    '&:focus-within': {
+                      borderColor: isFun ? c.outline : c.accent,
+                      outline: isFun ? `3px solid ${c.focusOutline}` : 'none',
+                      outlineOffset: isFun ? 3 : 0,
+                    },
+                    transition: c.transitionControl,
                   }}
                 >
                   <InputBase
@@ -433,7 +453,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
                     variant="contained"
                     disableElevation
                     onClick={handleSaveCategory}
-                    sx={{ bgcolor: c.accent, color: c.accentText, borderRadius: '50px', '&:hover': { bgcolor: c.accentHover }, whiteSpace: 'nowrap' }}
+                    sx={{ bgcolor: c.accent, color: c.accentText, borderRadius: isFun ? c.radiusPill : '50px', '&:hover': { bgcolor: c.accentHover }, whiteSpace: 'nowrap' }}
                   >
                     Save
                   </Button>
@@ -445,7 +465,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
       </Box>
 
       {/* Footer CTA */}
-      <Box sx={{ px: 3, pb: 3 }}>
+      <Box sx={{ px: { xs: 1.5, sm: 3 }, pb: 3 }}>
         <Button
           fullWidth
           variant="contained"
@@ -456,7 +476,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
           disabled={opening}
           sx={{
             bgcolor: c.accent, color: c.accentText,
-            borderRadius: 0,
+            borderRadius: isFun ? c.radiusSm : 0,
             py: 1.5,
             '&:hover': { bgcolor: c.accentHover },
             '&.Mui-disabled': { opacity: 0.4, color: c.accentText, bgcolor: c.accent },

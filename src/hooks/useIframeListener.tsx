@@ -85,7 +85,7 @@ export const useIframe = () => {
       } else if (data.action === 'LANGUAGE_CHANGED' && typeof data.language === 'string') {
         document.documentElement.lang = data.language;
         document.documentElement.dir = data.language === 'ar' || data.language === 'he' ? 'rtl' : 'ltr';
-      } else if (data.action === 'UI_STYLE_CHANGED' && typeof data.uiStyle === 'string') {
+      } else if (data.action === 'UI_STYLE_CHANGED') {
         const uiStyle = parseUiStyle(data.uiStyle);
         setUiStyle(uiStyle);
         document.documentElement.dataset.ui = uiStyle;

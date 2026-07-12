@@ -1,12 +1,12 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { Box, Typography, Button, IconButton, Tooltip } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
-import { favoritesAtom } from '../state/atoms';
+import { favoritesAtom, uiStyleAtom } from '../state/atoms';
 import { AppCard } from '../components/AppCard';
 import { AppDetailDialog } from '../components/AppDetailDialog';
 import { fetchResourceTimestamps } from '../api/rest';
@@ -16,6 +16,7 @@ const UNCATEGORIZED = '__none__';
 
 export function FavoritesPage() {
   const c = useColors();
+  const isFun = useAtomValue(uiStyleAtom) === 'fun';
   const [favorites, setFavorites] = useAtom(favoritesAtom);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [detail, setDetail] = useState<QdnResource | null>(null);
@@ -100,17 +101,27 @@ export function FavoritesPage() {
   const chipSx = (active: boolean) => ({
     fontSize: '0.72rem',
     fontWeight: tokens.typography.weightBold,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase' as const,
+    fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
+    letterSpacing: isFun ? 0 : '0.08em',
+    textTransform: isFun ? 'none' as const : 'uppercase' as const,
     color: active ? c.accentText : c.textSecondary,
     bgcolor: active ? c.accent : 'transparent',
-    border: `1px solid ${active ? c.accent : c.borderLight}`,
-    borderRadius: '50px',
+    border: `${isFun ? '2px' : '1px'} solid ${active ? c.accent : isFun ? c.outline : c.borderLight}`,
+    borderRadius: isFun ? c.radiusPill : '50px',
+    boxShadow: isFun ? c.shadowControl : 'none',
+    appearance: 'none',
+    font: 'inherit',
+    margin: 0,
     px: 1.5, py: 0.5,
     cursor: 'pointer',
     userSelect: 'none' as const,
-    transition: '0.12s ease',
-    '&:hover': { borderColor: c.accent, color: active ? c.accentText : c.accent },
+    transition: c.transitionControl,
+    '&:hover': {
+      borderColor: isFun ? c.outline : c.accent,
+      color: active ? c.accentText : c.accent,
+      bgcolor: active ? c.accent : isFun ? c.controlHover : 'transparent',
+      transform: isFun ? 'translate(-1px, -1px)' : 'none',
+    },
   });
 
   return (
@@ -126,7 +137,8 @@ export function FavoritesPage() {
       <Typography
         sx={{
           fontSize: '0.62rem', fontWeight: tokens.typography.weightBold,
-          letterSpacing: '0.14em', textTransform: 'uppercase',
+          fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
+          letterSpacing: isFun ? 0 : '0.14em', textTransform: isFun ? 'none' : 'uppercase',
           color: c.textSecondary, mb: 2,
         }}
       >
@@ -134,7 +146,16 @@ export function FavoritesPage() {
       </Typography>
 
       {favorites.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+        <Box sx={{
+          textAlign: 'center', py: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5,
+          ...(isFun && {
+            bgcolor: c.surface,
+            border: `3px solid ${c.outline}`,
+            borderRadius: c.radiusMd,
+            boxShadow: c.shadowCard,
+            px: 2,
+          }),
+        }}>
           <FavoriteIcon sx={{ fontSize: '2.5rem', color: c.borderLight }} />
           <Typography sx={{ fontSize: '0.85rem', color: c.textSecondary }}>
             No favorites yet
@@ -148,16 +169,16 @@ export function FavoritesPage() {
           {/* Category filter */}
           {(categories.length > 0 || hasUncategorized) && (
             <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Box onClick={() => setActiveCategory(null)} sx={chipSx(!activeCategory)}>
+              <Box component="button" type="button" onClick={() => setActiveCategory(null)} sx={chipSx(!activeCategory)}>
                 All ({favorites.length})
               </Box>
               {categories.map(cat => (
-                <Box key={cat} onClick={() => setActiveCategory(cat)} sx={chipSx(activeCategory === cat)}>
+                <Box component="button" type="button" key={cat} onClick={() => setActiveCategory(cat)} sx={chipSx(activeCategory === cat)}>
                   {cat} ({favorites.filter(f => f.category === cat).length})
                 </Box>
               ))}
               {hasUncategorized && (
-                <Box onClick={() => setActiveCategory(UNCATEGORIZED)} sx={chipSx(activeCategory === UNCATEGORIZED)}>
+                <Box component="button" type="button" onClick={() => setActiveCategory(UNCATEGORIZED)} sx={chipSx(activeCategory === UNCATEGORIZED)}>
                   Uncategorized ({favorites.filter(f => !f.category).length})
                 </Box>
               )}
@@ -189,16 +210,16 @@ export function FavoritesPage() {
                     cursor: dragIdx === null ? 'grab' : 'grabbing',
                     opacity: dragIdx === i ? 0.45 : 1,
                     outline: overIdx === i && dragIdx !== null && dragIdx !== i ? `2px solid ${c.accent}` : '2px solid transparent',
-                    borderRadius: `${tokens.shape.radius}px`,
+                    borderRadius: isFun ? c.radiusMd : `${tokens.shape.radius}px`,
                     transition: 'opacity 0.15s',
                     '& .move-controls': { opacity: 0, transition: 'opacity 0.12s' },
-                    '&:hover .move-controls': { opacity: 1 },
+                    '&:hover .move-controls, &:focus-within .move-controls': { opacity: 1 },
                   }}
                 >
                   <AppCard resource={r} onOpenDetail={handleOpenDetail} />
                   <Box
                     className="move-controls"
-                    sx={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', gap: 0.25, zIndex: 2 }}
+                    sx={{ position: 'absolute', top: 6, insetInlineStart: 6, display: 'flex', flexDirection: 'column', gap: 0.25, zIndex: 2 }}
                   >
                     <Tooltip title="Move up" placement="right">
                       <span>
@@ -206,7 +227,7 @@ export function FavoritesPage() {
                           size="small"
                           onClick={e => { e.stopPropagation(); handleMoveUp(i); }}
                           disabled={i === 0}
-                          sx={{ p: 0.25, width: 20, height: 20, bgcolor: `${c.surface}dd`, border: `1px solid ${c.borderLight}`, borderRadius: '3px', color: c.textSecondary, '&:hover': { color: c.accent, bgcolor: c.surface }, '&.Mui-disabled': { opacity: 0.25 } }}
+                          sx={{ p: 0.25, width: isFun ? 28 : 20, height: isFun ? 28 : 20, bgcolor: `${c.surface}dd`, border: `${isFun ? '2px' : '1px'} solid ${isFun ? c.outline : c.borderLight}`, borderRadius: isFun ? c.radiusSm : '3px', boxShadow: isFun ? c.shadowControl : 'none', color: c.textSecondary, '&:hover': { color: c.accent, bgcolor: c.surface }, '&.Mui-disabled': { opacity: 0.25, boxShadow: 'none' } }}
                         >
                           <ArrowUpwardIcon sx={{ fontSize: '0.65rem' }} />
                         </IconButton>
@@ -218,7 +239,7 @@ export function FavoritesPage() {
                           size="small"
                           onClick={e => { e.stopPropagation(); handleMoveDown(i); }}
                           disabled={i === visible.length - 1}
-                          sx={{ p: 0.25, width: 20, height: 20, bgcolor: `${c.surface}dd`, border: `1px solid ${c.borderLight}`, borderRadius: '3px', color: c.textSecondary, '&:hover': { color: c.accent, bgcolor: c.surface }, '&.Mui-disabled': { opacity: 0.25 } }}
+                          sx={{ p: 0.25, width: isFun ? 28 : 20, height: isFun ? 28 : 20, bgcolor: `${c.surface}dd`, border: `${isFun ? '2px' : '1px'} solid ${isFun ? c.outline : c.borderLight}`, borderRadius: isFun ? c.radiusSm : '3px', boxShadow: isFun ? c.shadowControl : 'none', color: c.textSecondary, '&:hover': { color: c.accent, bgcolor: c.surface }, '&.Mui-disabled': { opacity: 0.25, boxShadow: 'none' } }}
                         >
                           <ArrowDownwardIcon sx={{ fontSize: '0.65rem' }} />
                         </IconButton>

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { useFaviconUrl } from '../hooks/useFaviconUrl';
 import { useHasTransparentBg } from '../hooks/useHasTransparentBg';
 import { Box, Typography, IconButton, Tooltip, CircularProgress } from '@mui/material';
@@ -10,7 +10,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
-import { favoritesAtom } from '../state/atoms';
+import { favoritesAtom, uiStyleAtom } from '../state/atoms';
 import { openNewTab } from '../api/qortal';
 import { useFollowedNames } from '../hooks/useFollowedNames';
 import { avatarColor, resourceKey, serviceLabel } from '../utils/format';
@@ -24,6 +24,7 @@ interface Props {
 
 export function AppCard({ resource, onOpenDetail }: Props) {
   const c = useColors();
+  const isFun = useAtomValue(uiStyleAtom) === 'fun';
   const [favorites, setFavorites] = useAtom(favoritesAtom);
 
   const key = resourceKey(resource.service, resource.name, resource.identifier);
@@ -79,34 +80,55 @@ export function AppCard({ resource, onOpenDetail }: Props) {
 
   return (
     <Box
+      className="app-card"
       onClick={() => onOpenDetail(resource)}
       sx={{
         bgcolor: c.surface,
-        border: `${tokens.shape.borderWidth} solid ${c.borderLight}`,
-        borderRadius: `${tokens.shape.radius}px`,
+        border: `${isFun ? '3px' : tokens.shape.borderWidth} solid ${isFun ? c.outline : c.borderLight}`,
+        borderRadius: isFun ? c.radiusMd : `${tokens.shape.radius}px`,
+        boxShadow: isFun ? c.shadowCard : 'none',
         px: 1.5,
         py: 1,
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
+        flexWrap: { xs: 'wrap', sm: 'nowrap' },
         gap: 1,
-        transition: '0.15s ease',
+        transition: c.transitionControl,
         '&:hover': {
-          bgcolor: c.borderLight,
+          bgcolor: isFun ? c.controlHover : c.borderLight,
           borderColor: c.accent,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+          boxShadow: isFun ? c.shadowCardHover : '0 2px 12px rgba(0,0,0,0.12)',
+          transform: isFun ? 'translate(-1px, -2px)' : 'none',
+        },
+        '&:focus-visible': {
+          borderColor: isFun ? c.outline : c.accent,
+          outline: `3px solid ${isFun ? c.focusOutline : c.accent}`,
+          outlineOffset: 3,
         },
         '&:hover .open-btn': {
           color: c.accent,
           opacity: 1,
         },
+        ...(isFun && {
+          '& .MuiIconButton-root': {
+            border: `2px solid ${c.outline}`,
+            borderRadius: c.radiusSm,
+            boxShadow: c.shadowControl,
+            bgcolor: c.controlBg,
+          },
+          '& .MuiIconButton-root:hover': {
+            bgcolor: c.controlHover,
+            boxShadow: c.shadowControl,
+          },
+        }),
       }}
     >
       {/* Avatar */}
       <Box
         sx={{
           width: 32, height: 32,
-          borderRadius: `${tokens.shape.radius / 2}px`,
+          borderRadius: isFun ? c.radiusSm : `${tokens.shape.radius / 2}px`,
           bgcolor: avatarBgTransparent ? 'transparent' : color,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
@@ -137,7 +159,26 @@ export function AppCard({ resource, onOpenDetail }: Props) {
       </Box>
 
       {/* Name + publisher */}
-      <Box sx={{ flex: 1, minWidth: 0 }}>
+      <Box
+        component="button"
+        type="button"
+        aria-label={`Open details for ${resource.title || resource.identifier}`}
+        onClick={(event: React.MouseEvent) => {
+          event.stopPropagation();
+          onOpenDetail(resource);
+        }}
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          p: 0,
+          border: 0,
+          bgcolor: 'transparent',
+          color: 'inherit',
+          cursor: 'pointer',
+          font: 'inherit',
+          textAlign: 'start',
+        }}
+      >
         <Typography
           sx={{
             fontWeight: tokens.typography.weightBold,
@@ -166,18 +207,28 @@ export function AppCard({ resource, onOpenDetail }: Props) {
       </Box>
 
       {/* Right side actions */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: 0.5,
+        flexShrink: 0,
+        flexWrap: 'wrap',
+        ml: { xs: 5, sm: 0 },
+        width: { xs: 'calc(100% - 40px)', sm: 'auto' },
+      }}>
         {/* Service badge - hidden on mobile */}
         <Box
           sx={{
             display: { xs: 'none', sm: 'block' },
             fontSize: '0.55rem',
             fontWeight: tokens.typography.weightBold,
+            fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
             color: c.textSecondary,
             border: `1px solid ${c.borderLight}`,
-            borderRadius: '3px',
+            borderRadius: isFun ? c.radiusPill : '3px',
             px: 0.75,
             py: 0.25,
             lineHeight: 1.6,

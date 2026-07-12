@@ -17,6 +17,7 @@ import { EnumTheme } from '../../types';
 import { RatingControl } from './RatingControl';
 
 const APP_QDN_NAME = 'Apps';
+const APP_QDN_IDENTIFIER = 'Apps';
 
 const NAV = [
   { path: '/',       label: 'Favorites', activeIcon: <FavoriteIcon fontSize="small" />, idleIcon: <FavoriteBorderIcon fontSize="small" /> },
@@ -176,7 +177,7 @@ export function TopBar() {
         gridColumn: isClassic ? { xs: 2, sm: 'auto' } : 'auto',
         gridRow: isClassic ? { xs: 1, sm: 'auto' } : 'auto',
       }}>
-        <RatingControl qdnName={APP_QDN_NAME} />
+        <RatingControl qdnName={APP_QDN_NAME} identifier={APP_QDN_IDENTIFIER} />
 
         <Tooltip title={isFollowed ? 'Stop following this app' : 'Follow this app'} placement="bottom">
           <IconButton

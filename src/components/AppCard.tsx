@@ -189,7 +189,7 @@ export function AppCard({ resource, onOpenDetail }: Props) {
 
         {/* Rating */}
         <Box onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-          <RatingControl qdnName={resource.name} service={resource.service} />
+          <RatingControl qdnName={resource.name} service={resource.service} identifier={resource.identifier} />
         </Box>
 
         {/* Favorite */}

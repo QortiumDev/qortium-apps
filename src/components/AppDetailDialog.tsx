@@ -366,7 +366,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
           <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 1 }}>
             Community Rating
           </Typography>
-          <RatingControl qdnName={resource.name} service={resource.service} />
+          <RatingControl qdnName={resource.name} service={resource.service} identifier={resource.identifier} />
         </Box>
 
         <Divider sx={{ borderColor: c.borderLight }} />

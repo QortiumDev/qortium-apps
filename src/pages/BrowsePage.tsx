@@ -296,7 +296,7 @@ export function BrowsePage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
             gap: 1,
           }}
         >
@@ -328,7 +328,7 @@ export function BrowsePage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
             gap: 1,
           }}
         >

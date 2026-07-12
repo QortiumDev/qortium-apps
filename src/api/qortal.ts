@@ -5,6 +5,25 @@ export async function getUserAccount(): Promise<{ address: string; name: string 
   return { address: res.address, name: res.name || null };
 }
 
+// The node returns metadata nested under a `metadata` field; flatten it so
+// callers can access title/description/tags/category directly on the resource.
+function normalizeResource(raw: Record<string, unknown>): QdnResource {
+  const m = raw.metadata as Record<string, unknown> | undefined;
+  return {
+    service:     raw.service     as string,
+    name:        raw.name        as string,
+    identifier:  raw.identifier  as string,
+    size:        (raw.size        ?? m?.size)        as number   | undefined,
+    status:      raw.status                          as string   | undefined,
+    title:       (raw.title       ?? m?.title)       as string   | undefined,
+    description: (raw.description ?? m?.description) as string   | undefined,
+    category:    (raw.category    ?? m?.category)    as string   | undefined,
+    tags:        (raw.tags        ?? m?.tags)        as string[] | undefined,
+    created:     (raw.created     ?? m?.created)     as number   | undefined,
+    updated:     (raw.updated     ?? m?.updated)     as number   | undefined,
+  };
+}
+
 export async function searchResources(opts: {
   service?: string;
   query?: string;
@@ -21,8 +40,8 @@ export async function searchResources(opts: {
       reverse: true,
       ...(opts.service ? { service: opts.service } : {}),
       ...(opts.query   ? { query: opts.query }     : {}),
-    }) as QdnResource[];
-    return res ?? [];
+    }) as Record<string, unknown>[];
+    return Array.isArray(res) ? res.map(normalizeResource) : [];
   } catch { return []; }
 }
 
@@ -34,15 +53,6 @@ export async function openNewTab(service: string, name: string, identifier: stri
   });
 }
 
-export type VoteResult = 'voted' | 'already-voted' | 'error' | 'no-name';
-
-export async function ensureAccountUnlocked(): Promise<boolean> {
-  const result = await qdnRequest({ action: 'UNLOCK_SELECTED_ACCOUNT' }) as { isUnlocked?: boolean } | null;
-  return result?.isUnlocked === true;
-}
-
-// Each upvote = a METADATA resource published under the user's name with identifier=voteId.
-// Immediately queryable — no block confirmation needed, unlike CREATE_POLL.
 export async function getFollowedNames(): Promise<string[]> {
   try {
     const res = await qdnRequest({ action: 'GET_LIST', listName: 'followedNames' }) as string[];
@@ -56,41 +66,4 @@ export async function followName(name: string): Promise<void> {
 
 export async function unfollowName(name: string): Promise<void> {
   await qdnRequest({ action: 'REMOVE_FROM_LIST', listName: 'followedNames', items: [name] });
-}
-
-export async function castVote(voteId: string): Promise<VoteResult> {
-  let account: { address: string; name: string | null };
-  try {
-    account = await getUserAccount();
-  } catch { return 'error'; }
-
-  if (!account.name) return 'no-name';
-
-  try {
-    const existing = await qdnRequest({
-      action: 'LIST_QDN_RESOURCES',
-      service: 'METADATA',
-      name: account.name,
-      identifier: voteId,
-      limit: 1,
-    }) as unknown[];
-    if (Array.isArray(existing) && existing.length > 0) return 'already-voted';
-  } catch { /* not found = hasn't voted yet */ }
-
-  try {
-    if (!await ensureAccountUnlocked()) return 'error';
-    await qdnRequest({
-      action: 'PUBLISH_QDN_RESOURCE',
-      service: 'METADATA',
-      name: account.name,
-      identifier: voteId,
-      filename: 'vote.json',
-      data64: btoa(JSON.stringify({ v: 1 })),
-    });
-    return 'voted';
-  } catch (e: unknown) {
-    const msg = String(e).toLowerCase();
-    if (msg.includes('already') || msg.includes('duplicate')) return 'already-voted';
-    return 'error';
-  }
 }

@@ -5,17 +5,6 @@ export function formatBytes(bytes: number | undefined): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-export function formatAge(ts: number | undefined | null): string {
-  if (!ts) return '—';
-  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  if (s < 86400 * 30) return `${Math.floor(s / 86400)}d ago`;
-  if (s < 86400 * 365) return `${Math.floor(s / (86400 * 30))}mo ago`;
-  return `${Math.floor(s / (86400 * 365))}y ago`;
-}
-
 export function formatDate(ts: number | undefined | null): string {
   if (!ts) return '—';
   return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -35,17 +24,17 @@ export function avatarColor(name: string): string {
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
-export function voteId(service: string, name: string, identifier: string): string {
-  const key = `${service}|${name}|${identifier}`;
-  let h = 5381;
-  for (let i = 0; i < key.length; i++) {
-    h = ((h << 5) + h + key.charCodeAt(i)) | 0;
-  }
-  return `brs-v1-${(h >>> 0).toString(16).padStart(8, '0')}`;
-}
-
 export function resourceKey(service: string, name: string, identifier: string): string {
   return `${service}|${name}|${identifier}`;
+}
+
+export function truncateAddress(addr: string): string {
+  if (addr.length <= 16) return addr;
+  return `${addr.slice(0, 8)}…${addr.slice(-6)}`;
+}
+
+export function formatCategory(raw: string): string {
+  return raw.replace(/_/g, ' ').replace(/\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
 }
 
 export function serviceLabel(service: string): string {

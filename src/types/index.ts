@@ -11,6 +11,7 @@ export interface QdnResource {
   status?: string;
   title?: string;
   description?: string;
+  category?: string;
   tags?: string[];
   created?: number;
   updated?: number;
@@ -29,4 +30,4 @@ export interface Favorite {
 }
 
 export type ServiceFilter = 'ALL' | 'APP' | 'WEBSITE';
-export type SortMode = 'latest' | 'az' | 'voted';
+export type SortMode = 'latest' | 'az' | 'top';

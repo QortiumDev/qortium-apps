@@ -7,9 +7,7 @@ import { tokens } from '../theme/tokens';
 import { AppCard } from '../components/AppCard';
 import { AppDetailDialog } from '../components/AppDetailDialog';
 import { searchResources } from '../api/qortal';
-import { resourceKey, voteId as makeVoteId } from '../utils/format';
-import { fetchVoteCount } from '../api/rest';
-import { getCachedVotes, setCachedVotes } from '../utils/votesCache';
+import { resourceKey } from '../utils/format';
 import type { QdnResource, ServiceFilter, SortMode } from '../types';
 
 const LIMIT = 25;
@@ -23,7 +21,7 @@ const SERVICE_OPTS: { value: ServiceFilter; label: string }[] = [
 const SORT_OPTS: { value: SortMode; label: string }[] = [
   { value: 'latest', label: 'Latest' },
   { value: 'az',     label: 'A – Z'  },
-  { value: 'voted',  label: 'Top'    },
+  { value: 'top',    label: 'Top'    },
 ];
 
 function CardSkeleton() {
@@ -34,20 +32,19 @@ function CardSkeleton() {
         bgcolor: c.surface,
         border: `${tokens.shape.borderWidth} solid ${c.borderLight}`,
         borderRadius: `${tokens.shape.radius}px`,
-        p: 2,
-        display: 'flex', flexDirection: 'column', gap: 1.5,
+        px: 1.5, py: 1,
+        display: 'flex', alignItems: 'center', gap: 1,
       }}
     >
-      <Box sx={{ display: 'flex', gap: 1.5 }}>
-        <Skeleton variant="rectangular" width={40} height={40} sx={{ borderRadius: `${tokens.shape.radius / 2}px`, bgcolor: c.borderLight }} />
-        <Box sx={{ flex: 1 }}>
-          <Skeleton variant="text" width="60%" sx={{ bgcolor: c.borderLight }} />
-          <Skeleton variant="text" width="40%" sx={{ bgcolor: c.borderLight }} />
-        </Box>
+      <Skeleton variant="rectangular" width={32} height={32} sx={{ borderRadius: `${tokens.shape.radius / 2}px`, bgcolor: c.borderLight, flexShrink: 0 }} />
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Skeleton variant="text" width="55%" sx={{ bgcolor: c.borderLight }} />
+        <Skeleton variant="text" width="38%" sx={{ bgcolor: c.borderLight }} />
       </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Skeleton variant="text" width={50} sx={{ bgcolor: c.borderLight }} />
-        <Skeleton variant="circular" width={20} height={20} sx={{ bgcolor: c.borderLight }} />
+      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0 }}>
+        <Skeleton variant="circular" width={22} height={22} sx={{ bgcolor: c.borderLight }} />
+        <Skeleton variant="circular" width={22} height={22} sx={{ bgcolor: c.borderLight }} />
+        <Skeleton variant="circular" width={22} height={22} sx={{ bgcolor: c.borderLight }} />
       </Box>
     </Box>
   );
@@ -65,7 +62,7 @@ export function BrowsePage() {
   const [hasMore, setHasMore]   = useState(true);
   const [offset, setOffset]     = useState(0);
   const [detail, setDetail]     = useState<QdnResource | null>(null);
-  const [voteMap, setVoteMap]   = useState<Record<string, number>>({});
+  const [ratingMap, setRatingMap] = useState<Record<string, number>>({});
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -142,23 +139,26 @@ export function BrowsePage() {
   };
 
   useEffect(() => {
-    if (sort !== 'voted' || resources.length === 0) return;
+    if (sort !== 'top' || resources.length === 0) return;
     let cancelled = false;
     Promise.all(
-      resources.map(r => {
-        const pName = makeVoteId(r.service, r.name, r.identifier);
-        const cached = getCachedVotes(pName);
-        if (cached !== undefined) return Promise.resolve([pName, cached] as const);
-        return fetchVoteCount(pName).then(count => {
-          setCachedVotes(pName, count);
-          return [pName, count] as const;
-        });
+      resources.map(async r => {
+        const key = resourceKey(r.service, r.name, r.identifier);
+        try {
+          const summary = await qdnRequest({
+            action: 'FETCH_NODE_API',
+            path: `/resource-ratings/summary?service=${encodeURIComponent(r.service)}&name=${encodeURIComponent(r.name)}&identifier=${encodeURIComponent(r.identifier ?? 'default')}`,
+          }) as { weightedAverageRating?: number | null } | null;
+          return [key, summary?.weightedAverageRating ?? 0] as const;
+        } catch {
+          return [key, 0] as const;
+        }
       })
     ).then(entries => {
       if (cancelled) return;
-      setVoteMap(prev => {
+      setRatingMap(prev => {
         const next = { ...prev };
-        for (const [key, count] of entries) next[key] = count;
+        for (const [key, rating] of entries) next[key] = rating;
         return next;
       });
     });
@@ -169,10 +169,10 @@ export function BrowsePage() {
     if (sort === 'az') {
       return (a.identifier || a.name).localeCompare(b.identifier || b.name);
     }
-    if (sort === 'voted') {
-      const ka = makeVoteId(a.service, a.name, a.identifier);
-      const kb = makeVoteId(b.service, b.name, b.identifier);
-      return (voteMap[kb] ?? 0) - (voteMap[ka] ?? 0);
+    if (sort === 'top') {
+      const ka = resourceKey(a.service, a.name, a.identifier);
+      const kb = resourceKey(b.service, b.name, b.identifier);
+      return (ratingMap[kb] ?? 0) - (ratingMap[ka] ?? 0);
     }
     return 0; // 'latest' is already sorted by server
   });
@@ -196,11 +196,14 @@ export function BrowsePage() {
   return (
     <Box
       sx={{
-        pt: `${tokens.spacing.topBarHeight + 28}px`,
+        pt: `calc(var(--apps-top-bar-height, ${tokens.spacing.topBarHeight}px) + 28px)`,
         pb: 6,
         px: { xs: 2, md: 4 },
+        width: '100%',
         maxWidth: 900,
         mx: 'auto',
+        boxSizing: 'border-box',
+        overflowX: 'hidden',
       }}
     >
       {/* Page label */}
@@ -293,8 +296,8 @@ export function BrowsePage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-            gap: 1.5,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: 1,
           }}
         >
           {Array.from({ length: 9 }).map((_, i) => <CardSkeleton key={i} />)}
@@ -325,8 +328,8 @@ export function BrowsePage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-            gap: 1.5,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: 1,
           }}
         >
           {sorted.map(r => (

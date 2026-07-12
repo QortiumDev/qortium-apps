@@ -8,18 +8,16 @@ import CloseIcon from '@mui/icons-material/Close';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt';
-import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import LinkIcon from '@mui/icons-material/Link';
 import { useFaviconUrl } from '../hooks/useFaviconUrl';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
 import { favoritesAtom } from '../state/atoms';
-import { fetchVoteCount } from '../api/rest';
-import { openNewTab, castVote, type VoteResult } from '../api/qortal';
+import { fetchNameInfo, fetchPrimaryName, fetchResourceMeta, type NameInfo, type ResourceMeta } from '../api/rest';
+import { openNewTab } from '../api/qortal';
 import { appLink } from '../apps';
-import { avatarColor, voteId as makeVoteId, resourceKey, serviceLabel, formatBytes, formatDate } from '../utils/format';
-import { getCachedVotes, setCachedVotes } from '../utils/votesCache';
+import { avatarColor, resourceKey, serviceLabel, formatBytes, formatDate, truncateAddress, formatCategory } from '../utils/format';
+import { RatingControl } from './layout/RatingControl';
 import type { QdnResource } from '../types';
 
 interface Props {
@@ -27,14 +25,11 @@ interface Props {
   onClose: () => void;
 }
 
-type VoteStatus = 'idle' | 'loading' | VoteResult;
-
 export function AppDetailDialog({ resource, onClose }: Props) {
   const c = useColors();
   const [favorites, setFavorites] = useAtom(favoritesAtom);
 
   const key       = resource ? resourceKey(resource.service, resource.name, resource.identifier) : '';
-  const pName     = resource ? makeVoteId(resource.service, resource.name, resource.identifier) : '';
   const color     = resource ? avatarColor(resource.name + resource.identifier) : c.accent;
   const letter    = resource ? (resource.identifier?.[0] ?? resource.name?.[0] ?? '?').toUpperCase() : '';
   const faviconUrl = useFaviconUrl(resource?.service ?? '', resource?.name ?? '', resource?.identifier ?? '');
@@ -44,58 +39,53 @@ export function AppDetailDialog({ resource, onClose }: Props) {
 
   const fav = favorites.find(f => f.key === key);
 
-  const cached = resource ? getCachedVotes(pName) : undefined;
-  const [votes, setVotes]       = useState<number | null>(cached !== undefined ? cached : null);
-  const [voteStatus, setVoteStatus] = useState<VoteStatus>('idle');
   const [opening, setOpening]   = useState(false);
-  const [category, setCategory] = useState(fav?.category ?? '');
+  const [catInput, setCatInput] = useState(fav?.category ?? '');
   const [catEdited, setCatEdited] = useState(false);
   const [faviconFailed, setFaviconFailed] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
+  const [nameInfo, setNameInfo] = useState<NameInfo | null>(null);
+  const [ownerPrimaryName, setOwnerPrimaryName] = useState<string | null>(null);
+  const [freshMeta, setFreshMeta] = useState<ResourceMeta | null>(null);
 
   useEffect(() => {
     if (!resource) return;
-    setVoteStatus('idle');
     setOpening(false);
     setCatEdited(false);
     setFaviconFailed(false);
     setThumbFailed(false);
+    setNameInfo(null);
+    setOwnerPrimaryName(null);
+    setFreshMeta(null);
 
-    const c2 = getCachedVotes(pName);
-    if (c2 !== undefined) {
-      setVotes(c2);
-      return;
-    }
-    setVotes(null);
     let cancelled = false;
-    fetchVoteCount(pName).then(count => {
+
+    fetchNameInfo(resource.name).then(info => {
       if (cancelled) return;
-      setCachedVotes(pName, count);
-      setVotes(count);
+      setNameInfo(info);
+      if (info?.owner) {
+        fetchPrimaryName(info.owner).then(pName => {
+          if (!cancelled) setOwnerPrimaryName(pName);
+        }).catch(() => {});
+      }
     });
+
+    fetchResourceMeta(resource.service, resource.name, resource.identifier).then(meta => {
+      if (cancelled) return;
+      setFreshMeta(meta);
+    });
+
     return () => { cancelled = true; };
-  }, [resource, pName]);
+  }, [resource]);
 
   useEffect(() => {
     if (fav) {
-      setCategory(fav.category);
+      setCatInput(fav.category);
     } else {
-      setCategory('');
+      setCatInput('');
     }
     setCatEdited(false);
   }, [fav, key]);
-
-  const handleVote = useCallback(async () => {
-    if (!resource || voteStatus === 'loading') return;
-    setVoteStatus('loading');
-    const result = await castVote(pName);
-    setVoteStatus(result);
-    if (result === 'voted') {
-      const newCount = (votes ?? 0) + 1;
-      setVotes(newCount);
-      setCachedVotes(pName, newCount);
-    }
-  }, [resource, pName, votes, voteStatus]);
 
   const handleToggleFav = useCallback(() => {
     if (!resource) return;
@@ -120,7 +110,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
     setFavorites(prev => {
       const exists = prev.find(f => f.key === key);
       if (exists) {
-        return prev.map(f => f.key === key ? { ...f, category } : f);
+        return prev.map(f => f.key === key ? { ...f, category: catInput } : f);
       }
       return [...prev, {
         key,
@@ -128,12 +118,12 @@ export function AppDetailDialog({ resource, onClose }: Props) {
         name: resource.name,
         identifier: resource.identifier,
         label: resource.identifier,
-        category,
+        category: catInput,
         addedAt: Date.now(),
       }];
     });
     setCatEdited(false);
-  }, [resource, key, category, setFavorites]);
+  }, [resource, key, catInput, setFavorites]);
 
   const handleOpen = useCallback(async () => {
     if (!resource) return;
@@ -153,16 +143,15 @@ export function AppDetailDialog({ resource, onClose }: Props) {
     });
   }, [resource]);
 
-  const voteLabel: Record<VoteStatus, string> = {
-    idle: 'Upvote',
-    loading: 'Voting…',
-    voted: 'Voted!',
-    'already-voted': 'Already voted',
-    'no-name': 'Name required',
-    error: 'Try again',
-  };
-
   if (!resource) return null;
+
+  const title            = resource.title       ?? freshMeta?.title;
+  const description      = resource.description ?? freshMeta?.description;
+  const resourceCategory = resource.category    ?? freshMeta?.category;
+  const tags             = resource.tags        ?? freshMeta?.tags;
+  const size             = resource.size        ?? freshMeta?.size;
+  const created          = resource.created     ?? freshMeta?.created;
+  const updated          = resource.updated     ?? freshMeta?.updated;
 
   return (
     <Dialog
@@ -224,9 +213,9 @@ export function AppDetailDialog({ resource, onClose }: Props) {
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontWeight: tokens.typography.weightBold, fontSize: '0.95rem', color: c.textPrimary, lineHeight: 1.3 }}>
-            {resource.title || resource.identifier}
+            {title || resource.identifier}
           </Typography>
-          {resource.title && resource.title !== resource.identifier && (
+          {title && title !== resource.identifier && (
             <Typography sx={{ fontSize: '0.72rem', color: c.textSecondary, lineHeight: 1.4 }}>
               {resource.identifier}
             </Typography>
@@ -259,7 +248,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
       <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
 
         {/* Publisher row */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <Box>
             <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 0.25 }}>
               Publisher
@@ -267,12 +256,24 @@ export function AppDetailDialog({ resource, onClose }: Props) {
             <Typography sx={{ fontSize: '0.82rem', color: c.textPrimary, fontWeight: tokens.typography.weightMedium }}>
               {resource.name}
             </Typography>
+            {nameInfo?.owner && (
+              <Tooltip title={nameInfo.owner} placement="bottom-start">
+                <Typography sx={{ fontSize: '0.72rem', color: c.textSecondary, fontFamily: ownerPrimaryName ? 'inherit' : 'monospace', mt: 0.25, cursor: 'default' }}>
+                  {ownerPrimaryName ?? truncateAddress(nameInfo.owner)}
+                </Typography>
+              </Tooltip>
+            )}
+            {nameInfo?.registered !== undefined && (
+              <Typography sx={{ fontSize: '0.72rem', color: c.textSecondary, mt: 0.2 }}>
+                Registered {formatDate(nameInfo.registered)}
+              </Typography>
+            )}
           </Box>
           <Tooltip title="View in Chain Explorer" placement="top">
             <IconButton
               size="small"
               onClick={handleOpenPublisher}
-              sx={{ borderRadius: `${tokens.shape.radius}px`, color: c.textSecondary, '&:hover': { color: c.accent, bgcolor: c.borderLight } }}
+              sx={{ borderRadius: `${tokens.shape.radius}px`, color: c.textSecondary, '&:hover': { color: c.accent, bgcolor: c.borderLight }, mt: 0.5 }}
             >
               <LinkIcon fontSize="small" />
             </IconButton>
@@ -280,21 +281,34 @@ export function AppDetailDialog({ resource, onClose }: Props) {
         </Box>
 
         {/* Description */}
-        {resource.description && (
+        {description && (
           <Box>
             <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 0.5 }}>
               Description
             </Typography>
             <Typography sx={{ fontSize: '0.82rem', color: c.textPrimary, lineHeight: 1.5 }}>
-              {resource.description}
+              {description}
             </Typography>
           </Box>
         )}
 
-        {/* Tags */}
-        {resource.tags && resource.tags.length > 0 && (
-          <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-            {resource.tags.map(tag => (
+        {/* Category + Tags */}
+        {(resourceCategory || (tags && tags.length > 0)) && (
+          <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'center' }}>
+            {resourceCategory && (
+              <Box
+                sx={{
+                  fontSize: '0.65rem', fontWeight: tokens.typography.weightBold,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  color: c.accent,
+                  border: `1px solid ${c.accent}`,
+                  borderRadius: '50px', px: 1, py: 0.25,
+                }}
+              >
+                {formatCategory(resourceCategory)}
+              </Box>
+            )}
+            {tags?.map(tag => (
               <Box
                 key={tag}
                 sx={{
@@ -313,33 +327,33 @@ export function AppDetailDialog({ resource, onClose }: Props) {
 
         {/* Meta: size + dates */}
         <Box sx={{ display: 'flex', gap: 3 }}>
-          {resource.size !== undefined && (
+          {size !== undefined && (
             <Box>
               <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 0.25 }}>
                 Size
               </Typography>
               <Typography sx={{ fontSize: '0.8rem', color: c.textPrimary, fontFamily: 'monospace' }}>
-                {formatBytes(resource.size)}
+                {formatBytes(size)}
               </Typography>
             </Box>
           )}
-          {resource.created !== undefined && (
+          {created !== undefined && (
             <Box>
               <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 0.25 }}>
                 Published
               </Typography>
               <Typography sx={{ fontSize: '0.8rem', color: c.textPrimary }}>
-                {formatDate(resource.created)}
+                {formatDate(created)}
               </Typography>
             </Box>
           )}
-          {resource.updated !== undefined && resource.updated !== resource.created && (
+          {updated !== undefined && updated !== created && (
             <Box>
               <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 0.25 }}>
                 Updated
               </Typography>
               <Typography sx={{ fontSize: '0.8rem', color: c.textPrimary }}>
-                {formatDate(resource.updated)}
+                {formatDate(updated)}
               </Typography>
             </Box>
           )}
@@ -347,62 +361,12 @@ export function AppDetailDialog({ resource, onClose }: Props) {
 
         <Divider sx={{ borderColor: c.borderLight }} />
 
-        {/* Vote section */}
+        {/* Rating section */}
         <Box>
           <Typography sx={{ fontSize: '0.62rem', fontWeight: tokens.typography.weightBold, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.textSecondary, mb: 1 }}>
             Community Rating
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <ThumbUpAltIcon sx={{ fontSize: '1.1rem', color: c.accent }} />
-              {votes === null
-                ? <CircularProgress size={14} sx={{ color: c.textSecondary }} />
-                : (
-                  <Typography sx={{ fontSize: '1.1rem', fontWeight: tokens.typography.weightBlack, color: c.textPrimary }}>
-                    {votes.toLocaleString()}
-                  </Typography>
-                )
-              }
-              <Typography sx={{ fontSize: '0.75rem', color: c.textSecondary }}>
-                upvotes
-              </Typography>
-            </Box>
-
-            <Button
-              variant="contained"
-              size="small"
-              disableElevation
-              startIcon={
-                voteStatus === 'loading'
-                  ? <CircularProgress size={12} sx={{ color: c.accentText }} />
-                  : voteStatus === 'voted'
-                  ? <ThumbUpAltIcon fontSize="small" />
-                  : <ThumbUpOffAltIcon fontSize="small" />
-              }
-              onClick={handleVote}
-              disabled={voteStatus === 'loading' || voteStatus === 'voted' || voteStatus === 'already-voted' || voteStatus === 'no-name'}
-              sx={{
-                bgcolor: voteStatus === 'voted' ? c.success : c.accent,
-                color: c.accentText,
-                borderRadius: '50px',
-                '&:hover': { bgcolor: voteStatus === 'voted' ? c.success : c.accentHover },
-                '&.Mui-disabled': { opacity: 0.45, color: c.accentText, bgcolor: voteStatus === 'voted' ? c.success : c.accent },
-              }}
-            >
-              {voteLabel[voteStatus]}
-            </Button>
-
-            {voteStatus === 'error' && (
-              <Typography sx={{ fontSize: '0.72rem', color: c.error }}>
-                Failed — try again
-              </Typography>
-            )}
-            {voteStatus === 'no-name' && (
-              <Typography sx={{ fontSize: '0.72rem', color: c.textSecondary }}>
-                Register a name to vote
-              </Typography>
-            )}
-          </Box>
+          <RatingControl qdnName={resource.name} service={resource.service} />
         </Box>
 
         <Divider sx={{ borderColor: c.borderLight }} />
@@ -423,7 +387,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
                 sx={fav
                   ? {
                     bgcolor: c.error, color: '#fff', borderRadius: '50px',
-                    '&:hover': { bgcolor: '#b32929' },
+                    '&:hover': { bgcolor: c.error },
                   }
                   : {
                     borderColor: c.accent, color: c.accent, borderRadius: '50px',
@@ -457,8 +421,8 @@ export function AppDetailDialog({ resource, onClose }: Props) {
                   <InputBase
                     fullWidth
                     placeholder="Category (e.g. DeFi, Tools, Social…)"
-                    value={category}
-                    onChange={e => { setCategory(e.target.value); setCatEdited(true); }}
+                    value={catInput}
+                    onChange={e => { setCatInput(e.target.value); setCatEdited(true); }}
                     onKeyDown={e => e.key === 'Enter' && handleSaveCategory()}
                     sx={{ fontSize: '0.82rem', color: c.textPrimary, '& input::placeholder': { color: c.textSecondary, opacity: 1 } }}
                   />
@@ -498,7 +462,7 @@ export function AppDetailDialog({ resource, onClose }: Props) {
             '&.Mui-disabled': { opacity: 0.4, color: c.accentText, bgcolor: c.accent },
           }}
         >
-          {opening ? 'Opening…' : `Open ${serviceLabel(resource.service)}`}
+          {opening ? 'Opening…' : `Open ${title || serviceLabel(resource.service)}`}
         </Button>
       </Box>
     </Dialog>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useAtom } from 'jotai';
 import { useFaviconUrl } from '../hooks/useFaviconUrl';
 import { useHasTransparentBg } from '../hooks/useHasTransparentBg';
@@ -6,23 +6,20 @@ import { Box, Typography, IconButton, Tooltip, CircularProgress } from '@mui/mat
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
 import { favoritesAtom } from '../state/atoms';
-import { fetchVoteCount } from '../api/rest';
 import { openNewTab } from '../api/qortal';
 import { useFollowedNames } from '../hooks/useFollowedNames';
-import { avatarColor, voteId as makeVoteId, resourceKey, serviceLabel, formatAge, formatDate } from '../utils/format';
-import { getCachedVotes, setCachedVotes } from '../utils/votesCache';
+import { avatarColor, resourceKey, serviceLabel } from '../utils/format';
+import { RatingControl } from './layout/RatingControl';
 import type { QdnResource } from '../types';
 
 interface Props {
   resource: QdnResource;
   onOpenDetail: (resource: QdnResource) => void;
-  onVoteOptimistic?: (key: string, delta: number) => void;
 }
 
 export function AppCard({ resource, onOpenDetail }: Props) {
@@ -30,7 +27,6 @@ export function AppCard({ resource, onOpenDetail }: Props) {
   const [favorites, setFavorites] = useAtom(favoritesAtom);
 
   const key = resourceKey(resource.service, resource.name, resource.identifier);
-  const pName = makeVoteId(resource.service, resource.name, resource.identifier);
   const color = avatarColor(resource.name + resource.identifier);
   const letter = (resource.identifier?.[0] ?? resource.name?.[0] ?? '?').toUpperCase();
   const faviconUrl = useFaviconUrl(resource.service, resource.name, resource.identifier);
@@ -49,23 +45,7 @@ export function AppCard({ resource, onOpenDetail }: Props) {
   const isFav = favorites.some(f => f.key === key);
   const { isFollowed, toggle: toggleFollow } = useFollowedNames(resource.name);
 
-  const cached = getCachedVotes(pName);
-  const [votes, setVotes] = useState<number | null>(cached !== undefined ? cached : null);
   const [opening, setOpening] = useState(false);
-
-  useEffect(() => {
-    if (cached !== undefined) {
-      setVotes(cached);
-      return;
-    }
-    let cancelled = false;
-    fetchVoteCount(pName).then(count => {
-      if (cancelled) return;
-      setCachedVotes(pName, count);
-      setVotes(count);
-    });
-    return () => { cancelled = true; };
-  }, [pName, cached]);
 
   const handleToggleFav = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -104,11 +84,12 @@ export function AppCard({ resource, onOpenDetail }: Props) {
         bgcolor: c.surface,
         border: `${tokens.shape.borderWidth} solid ${c.borderLight}`,
         borderRadius: `${tokens.shape.radius}px`,
-        p: 2,
+        px: 1.5,
+        py: 1,
         cursor: 'pointer',
         display: 'flex',
-        flexDirection: 'column',
-        gap: 1.5,
+        alignItems: 'center',
+        gap: 1,
         transition: '0.15s ease',
         '&:hover': {
           bgcolor: c.borderLight,
@@ -121,153 +102,137 @@ export function AppCard({ resource, onOpenDetail }: Props) {
         },
       }}
     >
-      {/* Top row: avatar + name + service badge + favorite */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-        {/* Thumbnail avatar */}
-        <Box
-          sx={{
-            width: 40, height: 40,
-            borderRadius: `${tokens.shape.radius / 2}px`,
-            bgcolor: avatarBgTransparent ? 'transparent' : color,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-            overflow: 'hidden',
-          }}
-        >
-          {faviconUrl && !faviconFailed ? (
-            <Box
-              component="img"
-              src={faviconUrl}
-              alt=""
-              onError={() => setFaviconFailed(true)}
-              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          ) : thumbSrc && !thumbFailed ? (
-            <Box
-              component="img"
-              src={thumbSrc}
-              alt=""
-              onError={() => setThumbFailed(true)}
-              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          ) : (
-            <Typography sx={{ color: '#fff', fontWeight: tokens.typography.weightBlack, fontSize: '1.1rem', lineHeight: 1, userSelect: 'none' }}>
-              {letter}
-            </Typography>
-          )}
-        </Box>
-
-        {/* Name + publisher */}
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography
-            sx={{
-              fontWeight: tokens.typography.weightBold,
-              fontSize: '0.88rem',
-              color: c.textPrimary,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              lineHeight: 1.3,
-            }}
-          >
-            {resource.title || resource.identifier}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: '0.72rem',
-              color: c.textSecondary,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              lineHeight: 1.4,
-            }}
-          >
-            by {resource.name}
-          </Typography>
-        </Box>
-
-        {/* Service badge + favorite */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+      {/* Avatar */}
+      <Box
+        sx={{
+          width: 32, height: 32,
+          borderRadius: `${tokens.shape.radius / 2}px`,
+          bgcolor: avatarBgTransparent ? 'transparent' : color,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+          overflow: 'hidden',
+        }}
+      >
+        {faviconUrl && !faviconFailed ? (
           <Box
-            sx={{
-              fontSize: '0.58rem',
-              fontWeight: tokens.typography.weightBold,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: c.textSecondary,
-              border: `1px solid ${c.borderLight}`,
-              borderRadius: '3px',
-              px: 0.75,
-              py: 0.25,
-              lineHeight: 1.6,
-            }}
-          >
-            {serviceLabel(resource.service)}
-          </Box>
-
-          <Tooltip title={isFav ? 'Remove from favorites' : 'Add to favorites'} placement="top">
-            <IconButton
-              size="small"
-              onClick={handleToggleFav}
-              sx={{
-                p: 0.5,
-                borderRadius: `${tokens.shape.radius / 2}px`,
-                color: isFav ? c.error : c.textSecondary,
-                '&:hover': { color: isFav ? c.error : c.accent, bgcolor: 'transparent' },
-                transition: '0.15s ease',
-              }}
-            >
-              {isFav
-                ? <FavoriteIcon sx={{ fontSize: '0.95rem' }} />
-                : <FavoriteBorderIcon sx={{ fontSize: '0.95rem' }} />
-              }
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title={isFollowed ? `Unfollow ${resource.name}` : `Follow ${resource.name}`} placement="top">
-            <IconButton
-              size="small"
-              onClick={toggleFollow}
-              sx={{
-                p: 0.5,
-                borderRadius: `${tokens.shape.radius / 2}px`,
-                color: isFollowed ? c.accent : c.textSecondary,
-                '&:hover': { color: c.accent, bgcolor: 'transparent' },
-                transition: '0.15s ease',
-              }}
-            >
-              {isFollowed
-                ? <PersonRemoveIcon sx={{ fontSize: '0.95rem' }} />
-                : <PersonAddIcon sx={{ fontSize: '0.95rem' }} />
-              }
-            </IconButton>
-          </Tooltip>
-        </Box>
+            component="img"
+            src={faviconUrl}
+            alt=""
+            onError={() => setFaviconFailed(true)}
+            sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : thumbSrc && !thumbFailed ? (
+          <Box
+            component="img"
+            src={thumbSrc}
+            alt=""
+            onError={() => setThumbFailed(true)}
+            sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          <Typography sx={{ color: '#fff', fontWeight: tokens.typography.weightBlack, fontSize: '0.95rem', lineHeight: 1, userSelect: 'none' }}>
+            {letter}
+          </Typography>
+        )}
       </Box>
 
-      {/* Bottom row: votes + publish date + open button */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* Vote count */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <ThumbUpAltIcon sx={{ fontSize: '0.8rem', color: c.textSecondary }} />
-          {votes === null
-            ? <CircularProgress size={10} sx={{ color: c.textSecondary }} />
-            : (
-              <Typography sx={{ fontSize: '0.75rem', fontWeight: tokens.typography.weightBold, color: c.textSecondary }}>
-                {votes > 0 ? votes.toLocaleString() : '—'}
-              </Typography>
-            )
-          }
+      {/* Name + publisher */}
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography
+          sx={{
+            fontWeight: tokens.typography.weightBold,
+            fontSize: '0.82rem',
+            color: c.textPrimary,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.3,
+          }}
+        >
+          {resource.title || resource.identifier}
+        </Typography>
+        <Typography
+          sx={{
+            fontSize: '0.68rem',
+            color: c.textSecondary,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.4,
+          }}
+        >
+          {resource.name}
+        </Typography>
+      </Box>
+
+      {/* Right side actions */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+        {/* Service badge - hidden on mobile */}
+        <Box
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            fontSize: '0.55rem',
+            fontWeight: tokens.typography.weightBold,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: c.textSecondary,
+            border: `1px solid ${c.borderLight}`,
+            borderRadius: '3px',
+            px: 0.75,
+            py: 0.25,
+            lineHeight: 1.6,
+            mr: 0.25,
+          }}
+        >
+          {serviceLabel(resource.service)}
         </Box>
 
-        {/* Publish date */}
-        <Tooltip title={formatDate(resource.updated ?? resource.created)} placement="top">
-          <Typography sx={{ fontSize: '0.68rem', color: c.textSecondary, cursor: 'default' }}>
-            {formatAge(resource.updated ?? resource.created)}
-          </Typography>
+        {/* Rating */}
+        <Box onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <RatingControl qdnName={resource.name} service={resource.service} />
+        </Box>
+
+        {/* Favorite */}
+        <Tooltip title={isFav ? 'Remove from favorites' : 'Add to favorites'} placement="top">
+          <IconButton
+            size="small"
+            onClick={handleToggleFav}
+            sx={{
+              p: 0.5,
+              borderRadius: `${tokens.shape.radius / 2}px`,
+              color: isFav ? c.error : c.textSecondary,
+              '&:hover': { color: isFav ? c.error : c.accent, bgcolor: 'transparent' },
+              transition: '0.15s ease',
+            }}
+          >
+            {isFav
+              ? <FavoriteIcon sx={{ fontSize: '0.9rem' }} />
+              : <FavoriteBorderIcon sx={{ fontSize: '0.9rem' }} />
+            }
+          </IconButton>
         </Tooltip>
 
-        {/* Open button */}
+        {/* Follow */}
+        <Tooltip title={isFollowed ? `Unfollow ${resource.name}` : `Follow ${resource.name}`} placement="top">
+          <IconButton
+            size="small"
+            onClick={toggleFollow}
+            sx={{
+              p: 0.5,
+              borderRadius: `${tokens.shape.radius / 2}px`,
+              color: isFollowed ? c.accent : c.textSecondary,
+              '&:hover': { color: c.accent, bgcolor: 'transparent' },
+              transition: '0.15s ease',
+            }}
+          >
+            {isFollowed
+              ? <PersonRemoveIcon sx={{ fontSize: '0.9rem' }} />
+              : <PersonAddIcon sx={{ fontSize: '0.9rem' }} />
+            }
+          </IconButton>
+        </Tooltip>
+
+        {/* Open */}
         <Tooltip title="Open in new tab" placement="top">
           <IconButton
             size="small"
@@ -284,8 +249,8 @@ export function AppCard({ resource, onOpenDetail }: Props) {
             }}
           >
             {opening
-              ? <CircularProgress size={14} sx={{ color: c.textSecondary }} />
-              : <OpenInNewIcon sx={{ fontSize: '0.95rem' }} />
+              ? <CircularProgress size={13} sx={{ color: c.textSecondary }} />
+              : <OpenInNewIcon sx={{ fontSize: '0.9rem' }} />
             }
           </IconButton>
         </Tooltip>

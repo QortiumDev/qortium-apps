@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useAtomValue } from 'jotai';
 import { Box, IconButton, Popover, Tooltip, Typography } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { useColors } from '../../theme/ColorTokensContext';
 import { tokens } from '../../theme/tokens';
-import { uiStyleAtom } from '../../state/atoms';
 
 function requestQdn(options: { action: string; [key: string]: unknown }): Promise<unknown> {
   if (typeof qdnRequest !== 'function') {
@@ -31,12 +29,12 @@ function isBridgeMessage(e: MessageEvent<unknown>, action: string): boolean {
 
 export function RatingControl({ qdnName, service = 'APP', identifier = 'default' }: { qdnName: string; service?: string; identifier?: string }) {
   const c = useColors();
-  const uiStyle = useAtomValue(uiStyleAtom);
+  const [uiStyle, setUiStyle] = useState(document.documentElement.dataset.ui ?? 'classic');
+  const isClassic = uiStyle === 'classic';
+  const isFun = uiStyle === 'fun';
   const [summary, setSummary] = useState<RatingSummary>({ ratingCount: 0, weightedAverageRating: null });
   const [myRating, setMyRating] = useState<number | null>(null);
   const [canRate, setCanRate] = useState(false);
-  const isClassic = uiStyle === 'classic';
-  const isFun = uiStyle === 'fun';
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [hovered, setHovered] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -88,10 +86,11 @@ export function RatingControl({ qdnName, service = 'APP', identifier = 'default'
       })
       .catch(() => {});
 
-    // The account's own rating changes when the selected account does.
     function onMessage(e: MessageEvent<unknown>) {
       if (isBridgeMessage(e, 'SELECTED_ACCOUNT_CHANGED')) {
         fetchRating();
+      } else if (isBridgeMessage(e, 'UI_STYLE_CHANGED')) {
+        setUiStyle((e.data as { uiStyle?: unknown }).uiStyle as string ?? 'classic');
       }
     }
     window.addEventListener('message', onMessage);

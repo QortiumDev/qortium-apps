@@ -27,5 +27,6 @@ export const uiStyleAtom = atom<UiStyle>(_uiStyle);
 
 export const favoritesAtom = atomWithStorage<Favorite[]>('brs-favorites', []);
 
+export const notificationsEnabledAtom = atomWithStorage<boolean>('brs-notifications-enabled', false);
 
 export const followedNamesAtom = atom<Set<string>>(new Set<string>());

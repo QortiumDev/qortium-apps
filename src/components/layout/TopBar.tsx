@@ -9,10 +9,12 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import PersonRemoveAlt1Icon from '@mui/icons-material/PersonRemoveAlt1';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useColors } from '../../theme/ColorTokensContext';
 import { tokens } from '../../theme/tokens';
-import { themeAtom, uiStyleAtom } from '../../state/atoms';
+import { themeAtom, uiStyleAtom, notificationsEnabledAtom } from '../../state/atoms';
 import { EnumTheme } from '../../types';
 import { RatingControl } from './RatingControl';
 
@@ -27,6 +29,7 @@ const NAV = [
 export function TopBar() {
   const c = useColors();
   const [theme, setTheme] = useAtom(themeAtom);
+  const [notificationsEnabled, setNotificationsEnabled] = useAtom(notificationsEnabledAtom);
   const uiStyle = useAtomValue(uiStyleAtom);
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -34,7 +37,7 @@ export function TopBar() {
   const [isFollowed, setIsFollowed] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const isClassic = uiStyle === 'classic';
-  const isFun = uiStyle === 'fun';
+  const isFun = false;
   const usesAdaptiveHeader = isClassic || isFun;
 
   useEffect(() => {
@@ -217,6 +220,15 @@ export function TopBar() {
         <Tooltip title={theme === EnumTheme.DARK ? 'Light mode' : 'Dark mode'} placement="bottom">
           <IconButton onClick={handleToggleTheme} sx={buttonSx}>
             {theme === EnumTheme.DARK ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title={notificationsEnabled ? 'Notifications on' : 'Notify on favorite updates'} placement="bottom">
+          <IconButton
+            onClick={() => setNotificationsEnabled((current) => !current)}
+            sx={{ ...buttonSx, color: notificationsEnabled ? c.accent : c.textSecondary }}
+          >
+            {notificationsEnabled ? <NotificationsActiveIcon fontSize="small" /> : <NotificationsOffIcon fontSize="small" />}
           </IconButton>
         </Tooltip>
       </Box>

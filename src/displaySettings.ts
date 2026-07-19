@@ -1,4 +1,4 @@
-export const UI_STYLE_VALUES = ['classic', 'modern', 'fun'] as const;
+export const UI_STYLE_VALUES = ['classic', 'modern'] as const;
 
 export type UiStyle = (typeof UI_STYLE_VALUES)[number];
 

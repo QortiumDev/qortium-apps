@@ -64,19 +64,17 @@ export interface ColorTokens {
   easePop: string;
   transitionControl: string;
   fontFamily: string;
+  headingFontFamily: string;
   layoutMaxWidth: string;
   layoutWideMaxWidth: string;
   topBarShadow: string;
-  funInk: string;
   outline: string;
   focusOutline: string;
-  warmHighlight: string;
   radiusSm: string;
   radiusMd: string;
   radiusPill: string;
   shadowControl: string;
   shadowControlActive: string;
-  headingFontFamily: string;
 
   // Compatibility aliases used by the existing Modern-native components.
   bg: string;
@@ -99,29 +97,25 @@ type TokenSeed = Omit<
   | 'success'
   | 'error'
   | 'overlay'
-  | 'funInk'
+  | 'headingFontFamily'
   | 'outline'
   | 'focusOutline'
-  | 'warmHighlight'
   | 'radiusSm'
   | 'radiusMd'
   | 'radiusPill'
   | 'shadowControl'
   | 'shadowControlActive'
-  | 'headingFontFamily'
 > & {
   borderLight?: string;
   success?: string;
-  funInk?: string;
+  headingFontFamily?: string;
   outline?: string;
   focusOutline?: string;
-  warmHighlight?: string;
   radiusSm?: string;
   radiusMd?: string;
   radiusPill?: string;
   shadowControl?: string;
   shadowControlActive?: string;
-  headingFontFamily?: string;
 };
 
 type AccentFamily = {
@@ -133,10 +127,6 @@ type AccentFamily = {
 const interFontFamily = 'Inter, sans-serif';
 const lexendFontFamily =
   '"Lexend", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-const comicFontFamily =
-  '"Comic Neue", "Trebuchet MS", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-const fredokaFontFamily =
-  '"Fredoka", "Comic Neue", ui-sans-serif, system-ui, sans-serif';
 
 function withAliases(tokens: TokenSeed): ColorTokens {
   return {
@@ -149,16 +139,14 @@ function withAliases(tokens: TokenSeed): ColorTokens {
     success: tokens.success ?? tokens.accent,
     error: tokens.danger,
     overlay: tokens.modalBackdrop,
-    funInk: tokens.funInk ?? tokens.borderStrong,
+    headingFontFamily: tokens.headingFontFamily ?? tokens.fontFamily,
     outline: tokens.outline ?? tokens.border,
     focusOutline: tokens.focusOutline ?? tokens.accent,
-    warmHighlight: tokens.warmHighlight ?? tokens.warning,
     radiusSm: tokens.radiusSm ?? '6px',
     radiusMd: tokens.radiusMd ?? '8px',
     radiusPill: tokens.radiusPill ?? '999px',
     shadowControl: tokens.shadowControl ?? 'none',
     shadowControlActive: tokens.shadowControlActive ?? 'none',
-    headingFontFamily: tokens.headingFontFamily ?? tokens.fontFamily,
   };
 }
 
@@ -463,142 +451,6 @@ export const classicDarkColors: ColorTokens = withAliases({
   topBarShadow: '0 1px 2px rgb(0 0 0 / 25%), 0 4px 16px rgb(0 0 0 / 18%)',
 });
 
-export const funLightColors: ColorTokens = withAliases({
-  pageBg: '#eaf4ff',
-  frameBg: '#dfeaf3',
-  frameSurface: '#f6fbff',
-  surface: '#fffef8',
-  surfaceAlt: '#f2f7ed',
-  surfaceRaised: '#fffef8',
-  controlBg: '#edf5ec',
-  controlHover: '#dcebdc',
-  controlSelected: '#e2eee1',
-  border: '#07100c',
-  borderStrong: '#07100c',
-  borderLight: '#07100c',
-  text: '#17201d',
-  textSecondary: '#3f4e49',
-  textSubtle: '#586761',
-  textFaint: '#718079',
-  accent: '#21824a',
-  accentStrong: '#196a3a',
-  accentContrast: '#ffffff',
-  accentRing: 'rgb(33 130 74 / 20%)',
-  accentSoft: 'rgb(33 130 74 / 10%)',
-  accentGlow: 'rgb(33 130 74 / 22%)',
-  danger: '#bd332e',
-  dangerSoft: '#d85a52',
-  warning: '#8f641b',
-  info: '#2f6aa3',
-  link: '#236fb8',
-  modalBackdrop: 'rgb(7 16 12 / 46%)',
-  shadowColor: '#07100c',
-  scrollbarThumb: 'rgb(7 16 12 / 28%)',
-  scrollbarThumbHover: 'rgb(7 16 12 / 42%)',
-  skeletonShimmer: 'rgb(255 255 255 / 68%)',
-  syntaxString: '#1b6f3a',
-  syntaxNumber: '#82540d',
-  syntaxBoolean: '#6c43b8',
-  syntaxAttr: '#a13e3b',
-  gradientPrimary: 'linear-gradient(180deg, #2b9259 0%, #21824a 55%, #196a3a 100%)',
-  gradientPrimaryHover: 'linear-gradient(180deg, #35a365 0%, #2b9259 55%, #21824a 100%)',
-  gradientPrimaryActive: 'linear-gradient(180deg, #196a3a 0%, #155c32 100%)',
-  shadowPrimaryButton: '4px 4px 0 #07100c',
-  shadowPrimaryButtonHover: '6px 6px 0 #07100c',
-  shadowPrimaryButtonActive: '1px 1px 0 #07100c',
-  shadowCard: '5px 5px 0 #07100c',
-  shadowCardHover: '7px 7px 0 #07100c',
-  shadowBar: '0 4px 0 #07100c',
-  shadowTabActive: '3px 3px 0 #07100c',
-  shadowModal: '7px 7px 0 #07100c',
-  shadowPop: '5px 5px 0 #07100c',
-  easePop: 'cubic-bezier(0.2, 0.9, 0.3, 1.15)',
-  transitionControl: 'background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 150ms ease',
-  fontFamily: comicFontFamily,
-  layoutMaxWidth: '61em',
-  layoutWideMaxWidth: '70em',
-  topBarShadow: '0 4px 0 #07100c',
-  success: '#21824a',
-  funInk: '#07100c',
-  outline: '#07100c',
-  focusOutline: '#07100c',
-  warmHighlight: '#ffd447',
-  radiusSm: '14px 7px 12px 8px / 8px 12px 7px 14px',
-  radiusMd: '22px 9px 19px 10px / 10px 19px 9px 22px',
-  radiusPill: '255px 18px 230px 18px / 18px 230px 18px 255px',
-  shadowControl: '3px 3px 0 #07100c',
-  shadowControlActive: '1px 1px 0 #07100c',
-  headingFontFamily: fredokaFontFamily,
-});
-
-export const funDarkColors: ColorTokens = withAliases({
-  pageBg: '#07100f',
-  frameBg: '#091411',
-  frameSurface: '#101c19',
-  surface: '#172420',
-  surfaceAlt: '#1d2d28',
-  surfaceRaised: '#22332e',
-  controlBg: '#263a34',
-  controlHover: '#314941',
-  controlSelected: '#263b34',
-  border: '#9bb7ad',
-  borderStrong: '#9bb7ad',
-  borderLight: '#9bb7ad',
-  text: '#fff9ed',
-  textSecondary: '#d5dfda',
-  textSubtle: '#b5c3bd',
-  textFaint: '#91a19a',
-  accent: '#87d99b',
-  accentStrong: '#6fcd87',
-  accentContrast: '#0e1411',
-  accentRing: 'rgb(135 217 155 / 22%)',
-  accentSoft: 'rgb(135 217 155 / 12%)',
-  accentGlow: 'rgb(135 217 155 / 24%)',
-  danger: '#ef8b84',
-  dangerSoft: '#ffb5ae',
-  warning: '#e4c06d',
-  info: '#8bb8ef',
-  link: '#7fb7ff',
-  modalBackdrop: 'rgb(0 0 0 / 62%)',
-  shadowColor: '#020504',
-  scrollbarThumb: 'rgb(255 249 237 / 20%)',
-  scrollbarThumbHover: 'rgb(255 249 237 / 32%)',
-  skeletonShimmer: 'rgb(255 255 255 / 9%)',
-  syntaxString: '#79d897',
-  syntaxNumber: '#e0b060',
-  syntaxBoolean: '#c7a2ff',
-  syntaxAttr: '#ffaaa5',
-  gradientPrimary: 'linear-gradient(180deg, #95e0a7 0%, #87d99b 55%, #6fcd87 100%)',
-  gradientPrimaryHover: 'linear-gradient(180deg, #a2e6b2 0%, #93e0a5 55%, #84d698 100%)',
-  gradientPrimaryActive: 'linear-gradient(180deg, #79cf8e 0%, #6fc683 100%)',
-  shadowPrimaryButton: '4px 4px 0 #020504',
-  shadowPrimaryButtonHover: '6px 6px 0 #020504',
-  shadowPrimaryButtonActive: '1px 1px 0 #020504',
-  shadowCard: '5px 5px 0 #020504, inset 0 0 0 1px rgb(255 255 255 / 8%)',
-  shadowCardHover: '7px 7px 0 #020504, inset 0 0 0 1px rgb(255 255 255 / 8%)',
-  shadowBar: '0 4px 0 #020504',
-  shadowTabActive: '3px 3px 0 #020504',
-  shadowModal: '7px 7px 0 #020504, inset 0 0 0 1px rgb(255 255 255 / 8%)',
-  shadowPop: '5px 5px 0 #020504, inset 0 0 0 1px rgb(255 255 255 / 8%)',
-  easePop: 'cubic-bezier(0.2, 0.9, 0.3, 1.15)',
-  transitionControl: 'background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 150ms ease',
-  fontFamily: comicFontFamily,
-  layoutMaxWidth: '61em',
-  layoutWideMaxWidth: '70em',
-  topBarShadow: '0 4px 0 #020504',
-  success: '#87d99b',
-  funInk: '#020504',
-  outline: '#9bb7ad',
-  focusOutline: '#fff9ed',
-  warmHighlight: '#ffd447',
-  radiusSm: '14px 7px 12px 8px / 8px 12px 7px 14px',
-  radiusMd: '22px 9px 19px 10px / 10px 19px 9px 22px',
-  radiusPill: '255px 18px 230px 18px / 18px 230px 18px 255px',
-  shadowControl: '3px 3px 0 #020504',
-  shadowControlActive: '1px 1px 0 #020504',
-  headingFontFamily: fredokaFontFamily,
-});
-
 export const ACCENT_MAP: Record<
   UiStyle,
   Record<AppThemeMode, Record<AccentName, AccentFamily>>
@@ -651,30 +503,6 @@ export const ACCENT_MAP: Record<
       yellow: { accent: '#f4cb67', accentStrong: '#edbf53', accentContrast: '#2f2100' },
     },
   },
-  fun: {
-    light: {
-      green: { accent: '#21824a', accentStrong: '#196a3a', accentContrast: '#ffffff' },
-      blue: { accent: '#2368cf', accentStrong: '#1e5ec3', accentContrast: '#ffffff' },
-      orange: { accent: '#de8b23', accentStrong: '#bf6e0f', accentContrast: '#2a1c00' },
-      purple: { accent: '#7b44da', accentStrong: '#622fbd', accentContrast: '#ffffff' },
-      red: { accent: '#c63838', accentStrong: '#b63232', accentContrast: '#ffffff' },
-      teal: { accent: '#17a398', accentStrong: '#12857a', accentContrast: '#031817' },
-      cyan: { accent: '#1298d8', accentStrong: '#0f79aa', accentContrast: '#000a12' },
-      pink: { accent: '#bd3673', accentStrong: '#bd3673', accentContrast: '#ffffff' },
-      yellow: { accent: '#d6a828', accentStrong: '#bd8f20', accentContrast: '#1e1400' },
-    },
-    dark: {
-      green: { accent: '#87d99b', accentStrong: '#6fcd87', accentContrast: '#0e1411' },
-      blue: { accent: '#8abefe', accentStrong: '#7aaef7', accentContrast: '#061733' },
-      orange: { accent: '#f1b16d', accentStrong: '#eaa257', accentContrast: '#2a1c00' },
-      purple: { accent: '#caa2ff', accentStrong: '#b58dff', accentContrast: '#1c0c3d' },
-      red: { accent: '#f19a9a', accentStrong: '#dd7a7a', accentContrast: '#301111' },
-      teal: { accent: '#6ed9d1', accentStrong: '#5fc3bc', accentContrast: '#072523' },
-      cyan: { accent: '#88d2ff', accentStrong: '#79c5f5', accentContrast: '#03243d' },
-      pink: { accent: '#f8a7cf', accentStrong: '#f58cbf', accentContrast: '#2a0d23' },
-      yellow: { accent: '#f4cb67', accentStrong: '#edbf53', accentContrast: '#2f2100' },
-    },
-  },
 };
 
 function isAccentName(value: string): value is AccentName {
@@ -685,21 +513,15 @@ export function getBaseTokens(mode: AppThemeMode, uiStyle: UiStyle): ColorTokens
   if (uiStyle === 'classic') {
     return mode === 'dark' ? classicDarkColors : classicLightColors;
   }
-  if (uiStyle === 'fun') {
-    return mode === 'dark' ? funDarkColors : funLightColors;
-  }
   return mode === 'dark' ? darkColors : lightColors;
 }
 
 function inferMode(colors: ColorTokens): AppThemeMode {
-  return colors === darkColors || colors === classicDarkColors || colors === funDarkColors
-    ? 'dark'
-    : 'light';
+  return colors === darkColors || colors === classicDarkColors ? 'dark' : 'light';
 }
 
 function inferUiStyle(colors: ColorTokens): UiStyle {
   if (colors === classicLightColors || colors === classicDarkColors) return 'classic';
-  if (colors === funLightColors || colors === funDarkColors) return 'fun';
   return 'modern';
 }
 
@@ -712,16 +534,13 @@ export function applyAccent(
   if (!isAccentName(accent)) return colors;
   const family = ACCENT_MAP[uiStyle][mode][accent];
 
-  if ((uiStyle === 'classic' || uiStyle === 'fun') && accent === 'green') {
+  if (uiStyle === 'classic' && accent === 'green') {
     return colors;
   }
 
   return {
     ...colors,
     ...accentTokens(family, mode, uiStyle),
-    ...(uiStyle === 'fun' && {
-      controlSelected: alpha(family.accent, mode === 'dark' ? 0.22 : 0.18),
-    }),
   };
 }
 

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAtomValue } from 'jotai';
 import { Box, Typography, InputBase, CircularProgress, Button, IconButton, Skeleton } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -10,7 +9,7 @@ import { AppDetailDialog } from '../components/AppDetailDialog';
 import { searchResources } from '../api/qortal';
 import { resourceKey } from '../utils/format';
 import type { QdnResource, ServiceFilter, SortMode } from '../types';
-import { uiStyleAtom } from '../state/atoms';
+
 
 const LIMIT = 25;
 
@@ -26,9 +25,15 @@ const SORT_OPTS: { value: SortMode; label: string }[] = [
   { value: 'top',    label: 'Top'    },
 ];
 
+// Names/identifiers are case- and default-normalized server-side, so match on
+// the same normalized form when joining rating summaries back to resources.
+function ratingKey(service: string, name: string, identifier?: string): string {
+  return resourceKey(service, name.toLowerCase(), identifier || 'default');
+}
+
 function CardSkeleton() {
   const c = useColors();
-  const isFun = useAtomValue(uiStyleAtom) === 'fun';
+  const isFun = false;
   return (
     <Box
       sx={{
@@ -36,27 +41,32 @@ function CardSkeleton() {
         border: `${isFun ? '3px' : tokens.shape.borderWidth} solid ${isFun ? c.outline : c.borderLight}`,
         borderRadius: isFun ? c.radiusMd : `${tokens.shape.radius}px`,
         boxShadow: isFun ? c.shadowCard : 'none',
-        px: 1.5, py: 1,
-        display: 'flex', alignItems: 'center', gap: 1,
+        px: 1.5, py: 1.25,
+        display: 'flex', flexDirection: 'column', gap: 0.75,
       }}
     >
-      <Skeleton variant="rectangular" width={32} height={32} sx={{ borderRadius: `${tokens.shape.radius / 2}px`, bgcolor: c.borderLight, flexShrink: 0 }} />
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Skeleton variant="text" width="55%" sx={{ bgcolor: c.borderLight }} />
-        <Skeleton variant="text" width="38%" sx={{ bgcolor: c.borderLight }} />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Skeleton variant="rectangular" width={32} height={32} sx={{ borderRadius: `${tokens.shape.radius / 2}px`, bgcolor: c.borderLight, flexShrink: 0 }} />
+        <Skeleton variant="text" width="45%" sx={{ bgcolor: c.borderLight, flex: 1 }} />
+        <Skeleton variant="text" width="20%" sx={{ bgcolor: c.borderLight }} />
       </Box>
-      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0 }}>
+      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+        <Skeleton variant="rectangular" width={36} height={16} sx={{ borderRadius: '3px', bgcolor: c.borderLight }} />
+        <Skeleton variant="circular" width={22} height={22} sx={{ bgcolor: c.borderLight }} />
+        <Box sx={{ flex: 1 }} />
         <Skeleton variant="circular" width={22} height={22} sx={{ bgcolor: c.borderLight }} />
         <Skeleton variant="circular" width={22} height={22} sx={{ bgcolor: c.borderLight }} />
         <Skeleton variant="circular" width={22} height={22} sx={{ bgcolor: c.borderLight }} />
       </Box>
+      <Skeleton variant="text" width="90%" sx={{ bgcolor: c.borderLight }} />
+      <Skeleton variant="text" width="60%" sx={{ bgcolor: c.borderLight }} />
     </Box>
   );
 }
 
 export function BrowsePage() {
   const c = useColors();
-  const isFun = useAtomValue(uiStyleAtom) === 'fun';
+  const isFun = false;
 
   const [search, setSearch]     = useState('');
   const [filter, setFilter]     = useState<ServiceFilter>('ALL');
@@ -146,24 +156,32 @@ export function BrowsePage() {
   useEffect(() => {
     if (sort !== 'top' || resources.length === 0) return;
     let cancelled = false;
+    // Bulk-fetch rating summaries per service instead of one request per card -
+    // firing 25 parallel /summary calls is slow and lets a single stuck request
+    // stall the whole batch, which made "Top" look like it did nothing.
+    const services = Array.from(new Set(resources.map(r => r.service)));
     Promise.all(
-      resources.map(async r => {
-        const key = resourceKey(r.service, r.name, r.identifier);
+      services.map(async svc => {
         try {
-          const summary = await qdnRequest({
+          const list = await qdnRequest({
             action: 'FETCH_NODE_API',
-            path: `/resource-ratings/summary?service=${encodeURIComponent(r.service)}&name=${encodeURIComponent(r.name)}&identifier=${encodeURIComponent(r.identifier ?? 'default')}`,
-          }) as { weightedAverageRating?: number | null } | null;
-          return [key, summary?.weightedAverageRating ?? 0] as const;
+            path: `/resource-ratings?service=${encodeURIComponent(svc)}&limit=1000`,
+          }) as { name?: string; identifier?: string; weightedAverageRating?: number | null }[] | null;
+          return Array.isArray(list) ? list.map(s => ({ ...s, service: svc })) : [];
         } catch {
-          return [key, 0] as const;
+          return [];
         }
       })
-    ).then(entries => {
+    ).then(lists => {
       if (cancelled) return;
       setRatingMap(prev => {
         const next = { ...prev };
-        for (const [key, rating] of entries) next[key] = rating;
+        for (const list of lists) {
+          for (const s of list) {
+            if (!s.name) continue;
+            next[ratingKey(s.service, s.name, s.identifier)] = s.weightedAverageRating ?? 0;
+          }
+        }
         return next;
       });
     });
@@ -175,8 +193,8 @@ export function BrowsePage() {
       return (a.identifier || a.name).localeCompare(b.identifier || b.name);
     }
     if (sort === 'top') {
-      const ka = resourceKey(a.service, a.name, a.identifier);
-      const kb = resourceKey(b.service, b.name, b.identifier);
+      const ka = ratingKey(a.service, a.name, a.identifier);
+      const kb = ratingKey(b.service, b.name, b.identifier);
       return (ratingMap[kb] ?? 0) - (ratingMap[ka] ?? 0);
     }
     return 0; // 'latest' is already sorted by server
@@ -194,7 +212,6 @@ export function BrowsePage() {
     borderRadius: isFun ? c.radiusPill : '50px',
     boxShadow: isFun ? c.shadowControl : 'none',
     appearance: 'none',
-    font: 'inherit',
     margin: 0,
     px: 1.5, py: 0.5,
     cursor: 'pointer',
@@ -334,13 +351,6 @@ export function BrowsePage() {
             textAlign: 'center',
             py: 10,
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5,
-            ...(isFun && {
-              bgcolor: c.surface,
-              border: `3px solid ${c.outline}`,
-              borderRadius: c.radiusMd,
-              boxShadow: c.shadowCard,
-              px: 2,
-            }),
           }}
         >
           <SearchIcon sx={{ fontSize: '2.5rem', color: c.borderLight }} />

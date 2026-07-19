@@ -1,19 +1,19 @@
 import { useState, useCallback } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom } from 'jotai';
 import { useFaviconUrl } from '../hooks/useFaviconUrl';
 import { useHasTransparentBg } from '../hooks/useHasTransparentBg';
 import { Box, Typography, IconButton, Tooltip, CircularProgress } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
-import { favoritesAtom, uiStyleAtom } from '../state/atoms';
+import { favoritesAtom } from '../state/atoms';
 import { openNewTab } from '../api/qortal';
 import { useFollowedNames } from '../hooks/useFollowedNames';
-import { avatarColor, resourceKey, serviceLabel } from '../utils/format';
+import { avatarColor, resourceKey, serviceLabel, formatDate } from '../utils/format';
 import { RatingControl } from './layout/RatingControl';
 import type { QdnResource } from '../types';
 
@@ -24,7 +24,7 @@ interface Props {
 
 export function AppCard({ resource, onOpenDetail }: Props) {
   const c = useColors();
-  const isFun = useAtomValue(uiStyleAtom) === 'fun';
+  const isFun = false;
   const [favorites, setFavorites] = useAtom(favoritesAtom);
 
   const key = resourceKey(resource.service, resource.name, resource.identifier);
@@ -47,6 +47,7 @@ export function AppCard({ resource, onOpenDetail }: Props) {
   const { isFollowed, toggle: toggleFollow } = useFollowedNames(resource.name);
 
   const [opening, setOpening] = useState(false);
+  const lastPublished = resource.updated ?? resource.created;
 
   const handleToggleFav = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -70,30 +71,30 @@ export function AppCard({ resource, onOpenDetail }: Props) {
 
   const handleOpen = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (opening) return;
     setOpening(true);
     try {
       await openNewTab(resource.service, resource.name, resource.identifier);
     } finally {
       setOpening(false);
     }
-  }, [resource]);
+  }, [resource, opening]);
 
   return (
     <Box
       className="app-card"
-      onClick={() => onOpenDetail(resource)}
+      onClick={handleOpen}
       sx={{
         bgcolor: c.surface,
         border: `${isFun ? '3px' : tokens.shape.borderWidth} solid ${isFun ? c.outline : c.borderLight}`,
         borderRadius: isFun ? c.radiusMd : `${tokens.shape.radius}px`,
         boxShadow: isFun ? c.shadowCard : 'none',
         px: 1.5,
-        py: 1,
-        cursor: 'pointer',
+        py: 1.25,
+        cursor: opening ? 'wait' : 'pointer',
         display: 'flex',
-        alignItems: 'center',
-        flexWrap: { xs: 'wrap', sm: 'nowrap' },
-        gap: 1,
+        flexDirection: 'column',
+        gap: 0.75,
         transition: c.transitionControl,
         '&:hover': {
           bgcolor: isFun ? c.controlHover : c.borderLight,
@@ -106,94 +107,88 @@ export function AppCard({ resource, onOpenDetail }: Props) {
           outline: `3px solid ${isFun ? c.focusOutline : c.accent}`,
           outlineOffset: 3,
         },
-        '&:hover .open-btn': {
+        '&:hover .detail-btn': {
           color: c.accent,
           opacity: 1,
         },
-        ...(isFun && {
-          '& .MuiIconButton-root': {
-            border: `2px solid ${c.outline}`,
-            borderRadius: c.radiusSm,
-            boxShadow: c.shadowControl,
-            bgcolor: c.controlBg,
-          },
-          '& .MuiIconButton-root:hover': {
-            bgcolor: c.controlHover,
-            boxShadow: c.shadowControl,
-          },
-        }),
       }}
     >
-      {/* Avatar */}
-      <Box
-        sx={{
-          width: 32, height: 32,
-          borderRadius: isFun ? c.radiusSm : `${tokens.shape.radius / 2}px`,
-          bgcolor: avatarBgTransparent ? 'transparent' : color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-          overflow: 'hidden',
-        }}
-      >
-        {faviconUrl && !faviconFailed ? (
-          <Box
-            component="img"
-            src={faviconUrl}
-            alt=""
-            onError={() => setFaviconFailed(true)}
-            sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-        ) : thumbSrc && !thumbFailed ? (
-          <Box
-            component="img"
-            src={thumbSrc}
-            alt=""
-            onError={() => setThumbFailed(true)}
-            sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-        ) : (
-          <Typography sx={{ color: '#fff', fontWeight: tokens.typography.weightBlack, fontSize: '0.95rem', lineHeight: 1, userSelect: 'none' }}>
-            {letter}
-          </Typography>
-        )}
-      </Box>
-
-      {/* Name + publisher */}
-      <Box
-        component="button"
-        type="button"
-        aria-label={`Open details for ${resource.title || resource.identifier}`}
-        onClick={(event: React.MouseEvent) => {
-          event.stopPropagation();
-          onOpenDetail(resource);
-        }}
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          p: 0,
-          border: 0,
-          bgcolor: 'transparent',
-          color: 'inherit',
-          cursor: 'pointer',
-          font: 'inherit',
-          textAlign: 'start',
-        }}
-      >
-        <Typography
+      {/* Header: avatar + app name ... account name */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box
           sx={{
-            fontWeight: tokens.typography.weightBold,
-            fontSize: '0.82rem',
-            color: c.textPrimary,
-            whiteSpace: 'nowrap',
+            width: 32, height: 32,
+            borderRadius: isFun ? c.radiusSm : `${tokens.shape.radius / 2}px`,
+            bgcolor: avatarBgTransparent ? 'transparent' : color,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            lineHeight: 1.3,
           }}
         >
-          {resource.title || resource.identifier}
-        </Typography>
+          {opening ? (
+            <CircularProgress size={16} sx={{ color: avatarBgTransparent ? c.textSecondary : '#fff' }} />
+          ) : faviconUrl && !faviconFailed ? (
+            <Box
+              component="img"
+              src={faviconUrl}
+              alt=""
+              onError={() => setFaviconFailed(true)}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : thumbSrc && !thumbFailed ? (
+            <Box
+              component="img"
+              src={thumbSrc}
+              alt=""
+              onError={() => setThumbFailed(true)}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          ) : (
+            <Typography sx={{ color: '#fff', fontWeight: tokens.typography.weightBlack, fontSize: '0.95rem', lineHeight: 1, userSelect: 'none' }}>
+              {letter}
+            </Typography>
+          )}
+        </Box>
+
+        <Box
+          component="button"
+          type="button"
+          aria-label={`Open ${resource.title || resource.identifier}`}
+          onClick={(event: React.MouseEvent) => {
+            event.stopPropagation();
+            handleOpen(event);
+          }}
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            p: 0,
+            border: 0,
+            bgcolor: 'transparent',
+            color: 'inherit',
+            cursor: 'pointer',
+            font: 'inherit',
+            textAlign: 'start',
+          }}
+        >
+          <Typography
+            sx={{
+              fontWeight: tokens.typography.weightBold,
+              fontSize: '0.85rem',
+              color: c.textPrimary,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              lineHeight: 1.3,
+            }}
+          >
+            {resource.title || resource.identifier}
+          </Typography>
+        </Box>
+
         <Typography
           sx={{
+            flexShrink: 0,
+            maxWidth: '40%',
             fontSize: '0.68rem',
             color: c.textSecondary,
             whiteSpace: 'nowrap',
@@ -206,21 +201,16 @@ export function AppCard({ resource, onOpenDetail }: Props) {
         </Typography>
       </Box>
 
-      {/* Right side actions */}
+      {/* Actions row */}
       <Box sx={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-end',
         gap: 0.5,
-        flexShrink: 0,
         flexWrap: 'wrap',
-        ml: { xs: 5, sm: 0 },
-        width: { xs: 'calc(100% - 40px)', sm: 'auto' },
       }}>
-        {/* Service badge - hidden on mobile */}
+        {/* Service badge */}
         <Box
           sx={{
-            display: { xs: 'none', sm: 'block' },
             fontSize: '0.55rem',
             fontWeight: tokens.typography.weightBold,
             fontFamily: isFun ? c.headingFontFamily : c.fontFamily,
@@ -242,6 +232,8 @@ export function AppCard({ resource, onOpenDetail }: Props) {
         <Box onClick={(e: React.MouseEvent) => e.stopPropagation()}>
           <RatingControl qdnName={resource.name} service={resource.service} identifier={resource.identifier} />
         </Box>
+
+        <Box sx={{ flex: 1 }} />
 
         {/* Favorite */}
         <Tooltip title={isFav ? 'Remove from favorites' : 'Add to favorites'} placement="top">
@@ -283,13 +275,15 @@ export function AppCard({ resource, onOpenDetail }: Props) {
           </IconButton>
         </Tooltip>
 
-        {/* Open */}
-        <Tooltip title="Open in new tab" placement="top">
+        {/* Detail view */}
+        <Tooltip title="View details" placement="top">
           <IconButton
             size="small"
-            className="open-btn"
-            onClick={handleOpen}
-            disabled={opening}
+            className="detail-btn"
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              onOpenDetail(resource);
+            }}
             sx={{
               p: 0.5,
               borderRadius: `${tokens.shape.radius / 2}px`,
@@ -299,13 +293,44 @@ export function AppCard({ resource, onOpenDetail }: Props) {
               transition: '0.15s ease',
             }}
           >
-            {opening
-              ? <CircularProgress size={13} sx={{ color: c.textSecondary }} />
-              : <OpenInNewIcon sx={{ fontSize: '0.9rem' }} />
-            }
+            <InfoOutlinedIcon sx={{ fontSize: '0.9rem' }} />
           </IconButton>
         </Tooltip>
       </Box>
+
+      {/* Description */}
+      {resource.description && (
+        <Typography
+          sx={{
+            fontSize: '0.72rem',
+            color: c.textSecondary,
+            opacity: 0.85,
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 3,
+            overflow: 'hidden',
+            lineHeight: 1.45,
+            whiteSpace: 'normal',
+          }}
+        >
+          {resource.description}
+        </Typography>
+      )}
+
+      {/* Last published */}
+      {lastPublished !== undefined && (
+        <Typography
+          sx={{
+            fontSize: '0.62rem',
+            color: c.textSecondary,
+            opacity: 0.6,
+            whiteSpace: 'nowrap',
+            textAlign: 'end',
+          }}
+        >
+          {formatDate(lastPublished)}
+        </Typography>
+      )}
     </Box>
   );
 }

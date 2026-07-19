@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom } from 'jotai';
 import {
   Box, Dialog, Typography, IconButton, Button,
   InputBase, Tooltip, CircularProgress, Divider,
@@ -12,7 +12,7 @@ import LinkIcon from '@mui/icons-material/Link';
 import { useFaviconUrl } from '../hooks/useFaviconUrl';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
-import { favoritesAtom, uiStyleAtom } from '../state/atoms';
+import { favoritesAtom } from '../state/atoms';
 import { fetchNameInfo, fetchPrimaryName, fetchResourceMeta, type NameInfo, type ResourceMeta } from '../api/rest';
 import { openNewTab } from '../api/qortal';
 import { appLink } from '../apps';
@@ -27,7 +27,7 @@ interface Props {
 
 export function AppDetailDialog({ resource, onClose }: Props) {
   const c = useColors();
-  const isFun = useAtomValue(uiStyleAtom) === 'fun';
+  const isFun = false;
   const [favorites, setFavorites] = useAtom(favoritesAtom);
 
   const key       = resource ? resourceKey(resource.service, resource.name, resource.identifier) : '';

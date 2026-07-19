@@ -31,7 +31,7 @@ export function RatingControl({ qdnName, service = 'APP', identifier = 'default'
   const c = useColors();
   const [uiStyle, setUiStyle] = useState(document.documentElement.dataset.ui ?? 'classic');
   const isClassic = uiStyle === 'classic';
-  const isFun = uiStyle === 'fun';
+  const isFun = false;
   const [summary, setSummary] = useState<RatingSummary>({ ratingCount: 0, weightedAverageRating: null });
   const [myRating, setMyRating] = useState<number | null>(null);
   const [canRate, setCanRate] = useState(false);

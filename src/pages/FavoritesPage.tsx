@@ -1,43 +1,43 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom } from 'jotai';
 import { Box, Typography, Button, IconButton, Tooltip } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useColors } from '../theme/ColorTokensContext';
 import { tokens } from '../theme/tokens';
-import { favoritesAtom, uiStyleAtom } from '../state/atoms';
+import { favoritesAtom } from '../state/atoms';
 import { AppCard } from '../components/AppCard';
 import { AppDetailDialog } from '../components/AppDetailDialog';
-import { fetchResourceTimestamps } from '../api/rest';
+import { fetchResourceMeta } from '../api/rest';
 import type { QdnResource } from '../types';
 
 const UNCATEGORIZED = '__none__';
 
 export function FavoritesPage() {
   const c = useColors();
-  const isFun = useAtomValue(uiStyleAtom) === 'fun';
+  const isFun = false;
   const [favorites, setFavorites] = useAtom(favoritesAtom);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [detail, setDetail] = useState<QdnResource | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
-  // Refresh timestamps for all favorites on mount so they reflect the current QDN state
+  // Refresh timestamps + description for all favorites on mount so they reflect the current QDN state
   useEffect(() => {
     if (favorites.length === 0) return;
     let cancelled = false;
     Promise.all(
       favorites.map(async fav => {
-        const ts = await fetchResourceTimestamps(fav.service, fav.name, fav.identifier);
-        return { key: fav.key, updated: ts?.updated, created: ts?.created };
+        const meta = await fetchResourceMeta(fav.service, fav.name, fav.identifier);
+        return { key: fav.key, updated: meta?.updated, created: meta?.created, description: meta?.description };
       })
     ).then(results => {
       if (cancelled) return;
       setFavorites(prev => prev.map(f => {
         const r = results.find(x => x.key === f.key);
-        if (!r || (r.updated == null && r.created == null)) return f;
-        return { ...f, updated: r.updated, created: r.created };
+        if (!r) return f;
+        return { ...f, updated: r.updated ?? f.updated, created: r.created ?? f.created, description: r.description ?? f.description };
       }));
     });
     return () => { cancelled = true; };
@@ -66,6 +66,7 @@ export function FavoritesPage() {
       title: f.label || f.identifier,
       updated: f.updated,
       created: f.created,
+      description: f.description,
     })),
     [visible]
   );
@@ -110,7 +111,6 @@ export function FavoritesPage() {
     borderRadius: isFun ? c.radiusPill : '50px',
     boxShadow: isFun ? c.shadowControl : 'none',
     appearance: 'none',
-    font: 'inherit',
     margin: 0,
     px: 1.5, py: 0.5,
     cursor: 'pointer',
@@ -148,13 +148,6 @@ export function FavoritesPage() {
       {favorites.length === 0 ? (
         <Box sx={{
           textAlign: 'center', py: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5,
-          ...(isFun && {
-            bgcolor: c.surface,
-            border: `3px solid ${c.outline}`,
-            borderRadius: c.radiusMd,
-            boxShadow: c.shadowCard,
-            px: 2,
-          }),
         }}>
           <FavoriteIcon sx={{ fontSize: '2.5rem', color: c.borderLight }} />
           <Typography sx={{ fontSize: '0.85rem', color: c.textSecondary }}>
@@ -193,8 +186,8 @@ export function FavoritesPage() {
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-                gap: 1.5,
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 380px), 1fr))',
+                gap: 1,
               }}
             >
               {resources.map((r, i) => (

@@ -7,6 +7,8 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import LinkIcon from '@mui/icons-material/Link';
 import { useFaviconUrl } from '../hooks/useFaviconUrl';
@@ -16,6 +18,7 @@ import { favoritesAtom } from '../state/atoms';
 import { fetchNameInfo, fetchPrimaryName, fetchResourceMeta, type NameInfo, type ResourceMeta } from '../api/rest';
 import { openNewTab } from '../api/qortal';
 import { appLink } from '../apps';
+import { useHomeBookmark } from '../hooks/useHomeBookmark';
 import { avatarColor, resourceKey, serviceLabel, formatBytes, formatDate, truncateAddress, formatCategory } from '../utils/format';
 import { RatingControl } from './layout/RatingControl';
 import type { QdnResource } from '../types';
@@ -25,10 +28,19 @@ interface Props {
   onClose: () => void;
 }
 
+const EMPTY_RESOURCE: QdnResource = { service: '', name: '', identifier: '' };
+
 export function AppDetailDialog({ resource, onClose }: Props) {
   const c = useColors();
   const isFun = false;
   const [favorites, setFavorites] = useAtom(favoritesAtom);
+  const {
+    supported: bookmarkSupported,
+    isBookmarked,
+    busy: bookmarkBusy,
+    error: bookmarkError,
+    toggle: toggleBookmark,
+  } = useHomeBookmark(resource ?? EMPTY_RESOURCE);
 
   const key       = resource ? resourceKey(resource.service, resource.name, resource.identifier) : '';
   const color     = resource ? avatarColor(resource.name + resource.identifier) : c.accent;
@@ -462,6 +474,42 @@ export function AppDetailDialog({ resource, onClose }: Props) {
             )}
           </Box>
         </Box>
+
+        {bookmarkSupported && (
+          <>
+            <Divider sx={{ borderColor: c.borderLight }} />
+
+            {/* Home Bookmarks section */}
+            <Box>
+              <Typography sx={{ ...sectionLabelSx, mb: 1 }}>
+                Home Bookmarks
+              </Typography>
+              <Button
+                variant={isBookmarked ? 'contained' : 'outlined'}
+                size="small"
+                disableElevation
+                disabled={bookmarkBusy}
+                startIcon={isBookmarked ? <BookmarkIcon fontSize="small" /> : <BookmarkBorderIcon fontSize="small" />}
+                onClick={toggleBookmark}
+                sx={isBookmarked
+                  ? {
+                    bgcolor: c.accent, color: c.accentText, borderRadius: isFun ? c.radiusPill : '50px',
+                    '&:hover': { bgcolor: c.accentHover },
+                  }
+                  : {
+                    borderColor: c.accent, color: c.accent, borderRadius: isFun ? c.radiusPill : '50px',
+                    '&:hover': { bgcolor: c.borderLight, borderColor: c.accent },
+                  }
+                }
+              >
+                {isBookmarked ? 'Saved to Home' : 'Save to Home bookmarks'}
+              </Button>
+              {bookmarkError && (
+                <Typography sx={{ fontSize: '0.72rem', color: c.error, mt: 1 }}>{bookmarkError}</Typography>
+              )}
+            </Box>
+          </>
+        )}
       </Box>
 
       {/* Footer CTA */}

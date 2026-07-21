@@ -5,6 +5,8 @@ import { useHasTransparentBg } from '../hooks/useHasTransparentBg';
 import { Box, Typography, IconButton, Tooltip, CircularProgress } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
@@ -13,6 +15,7 @@ import { tokens } from '../theme/tokens';
 import { favoritesAtom } from '../state/atoms';
 import { openNewTab } from '../api/qortal';
 import { useFollowedNames } from '../hooks/useFollowedNames';
+import { useHomeBookmark } from '../hooks/useHomeBookmark';
 import { avatarColor, resourceKey, serviceLabel, formatDate } from '../utils/format';
 import { RatingControl } from './layout/RatingControl';
 import type { QdnResource } from '../types';
@@ -45,6 +48,13 @@ export function AppCard({ resource, onOpenDetail }: Props) {
 
   const isFav = favorites.some(f => f.key === key);
   const { isFollowed, toggle: toggleFollow } = useFollowedNames(resource.name);
+  const {
+    supported: bookmarkSupported,
+    isBookmarked,
+    busy: bookmarkBusy,
+    error: bookmarkError,
+    toggle: toggleBookmark,
+  } = useHomeBookmark(resource);
 
   const [opening, setOpening] = useState(false);
   const lastPublished = resource.updated ?? resource.created;
@@ -255,6 +265,31 @@ export function AppCard({ resource, onOpenDetail }: Props) {
           </IconButton>
         </Tooltip>
 
+        {/* Home Bookmarks */}
+        {bookmarkSupported && (
+          <Tooltip title={isBookmarked ? 'Remove from Home bookmarks' : 'Save to Home bookmarks'} placement="top">
+            <span>
+              <IconButton
+                size="small"
+                onClick={toggleBookmark}
+                disabled={bookmarkBusy}
+                sx={{
+                  p: 0.5,
+                  borderRadius: `${tokens.shape.radius / 2}px`,
+                  color: isBookmarked ? c.accent : c.textSecondary,
+                  '&:hover': { color: c.accent, bgcolor: 'transparent' },
+                  transition: '0.15s ease',
+                }}
+              >
+                {isBookmarked
+                  ? <BookmarkIcon sx={{ fontSize: '0.9rem' }} />
+                  : <BookmarkBorderIcon sx={{ fontSize: '0.9rem' }} />
+                }
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
+
         {/* Follow */}
         <Tooltip title={isFollowed ? `Unfollow ${resource.name}` : `Follow ${resource.name}`} placement="top">
           <IconButton
@@ -297,6 +332,13 @@ export function AppCard({ resource, onOpenDetail }: Props) {
           </IconButton>
         </Tooltip>
       </Box>
+
+      {/* Home Bookmarks error */}
+      {bookmarkError && (
+        <Typography sx={{ fontSize: '0.62rem', color: c.error, lineHeight: 1.3 }}>
+          {bookmarkError}
+        </Typography>
+      )}
 
       {/* Description */}
       {resource.description && (

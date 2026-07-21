@@ -1,6 +1,7 @@
 import { atom } from 'jotai';
 import { atomWithStorage } from 'jotai/utils';
 import { EnumTheme, type Favorite } from '../types';
+import type { BookmarkManagerSnapshot } from '../types/bookmarkManager';
 import { normalizeUiStyle, type UiStyle } from '../displaySettings';
 
 const _p = new URLSearchParams(window.location.search);
@@ -30,3 +31,9 @@ export const favoritesAtom = atomWithStorage<Favorite[]>('brs-favorites', []);
 export const notificationsEnabledAtom = atomWithStorage<boolean>('brs-notifications-enabled', false);
 
 export const followedNamesAtom = atom<Set<string>>(new Set<string>());
+
+export const homeBookmarksAtom = atom<{
+  supported: boolean | null;
+  permission: boolean | null;
+  snapshot: BookmarkManagerSnapshot | null;
+}>({ supported: null, permission: null, snapshot: null });

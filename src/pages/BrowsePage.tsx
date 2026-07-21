@@ -80,6 +80,8 @@ export function BrowsePage() {
   const [ratingMap, setRatingMap] = useState<Record<string, number>>({});
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resourcesRef = useRef<QdnResource[]>([]);
+  const searchRef = useRef(search);
 
   const doLoad = useCallback(async (
     q: string,
@@ -128,6 +130,43 @@ export function BrowsePage() {
     doLoad(search, filter, 0, true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
+
+  useEffect(() => { resourcesRef.current = resources; }, [resources]);
+  useEffect(() => { searchRef.current = search; }, [search]);
+
+  // Cards show "last published" dates that go stale if this page is left open
+  // indefinitely. Silently re-fetch timestamps for whatever's already loaded
+  // once an hour, without disturbing scroll position or pagination state.
+  const refreshTimestamps = useCallback(async () => {
+    const current = resourcesRef.current;
+    if (current.length === 0) return;
+    try {
+      const services = Array.from(new Set(current.map(r => r.service)));
+      const lists = await Promise.all(
+        services.map(svc => searchResources({
+          service: svc,
+          query: searchRef.current || undefined,
+          limit: current.filter(r => r.service === svc).length,
+          offset: 0,
+        }))
+      );
+      const freshMap = new Map<string, QdnResource>();
+      for (const list of lists) {
+        for (const r of list) freshMap.set(resourceKey(r.service, r.name, r.identifier), r);
+      }
+      setResources(prev => prev.map(r => {
+        const fresh = freshMap.get(resourceKey(r.service, r.name, r.identifier));
+        return fresh ? { ...r, updated: fresh.updated, created: fresh.created } : r;
+      }));
+    } catch {
+      // silent - keep showing the last known timestamps
+    }
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(refreshTimestamps, 60 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [refreshTimestamps]);
 
   const handleSearchChange = (val: string) => {
     setSearch(val);

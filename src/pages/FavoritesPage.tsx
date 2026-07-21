@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useAtom } from 'jotai';
 import { Box, Typography, Button, IconButton, Tooltip } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -23,26 +23,32 @@ export function FavoritesPage() {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
-  // Refresh timestamps + description for all favorites on mount so they reflect the current QDN state
-  useEffect(() => {
-    if (favorites.length === 0) return;
-    let cancelled = false;
-    Promise.all(
-      favorites.map(async fav => {
+  // Refresh timestamps + description for all favorites on mount, and again once
+  // an hour so they stay current if this page is left open indefinitely.
+  const favoritesRef = useRef(favorites);
+  useEffect(() => { favoritesRef.current = favorites; }, [favorites]);
+
+  const refreshFavoriteTimestamps = useCallback(async () => {
+    const favs = favoritesRef.current;
+    if (favs.length === 0) return;
+    const results = await Promise.all(
+      favs.map(async fav => {
         const meta = await fetchResourceMeta(fav.service, fav.name, fav.identifier);
         return { key: fav.key, updated: meta?.updated, created: meta?.created, description: meta?.description };
       })
-    ).then(results => {
-      if (cancelled) return;
-      setFavorites(prev => prev.map(f => {
-        const r = results.find(x => x.key === f.key);
-        if (!r) return f;
-        return { ...f, updated: r.updated ?? f.updated, created: r.created ?? f.created, description: r.description ?? f.description };
-      }));
-    });
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    );
+    setFavorites(prev => prev.map(f => {
+      const r = results.find(x => x.key === f.key);
+      if (!r) return f;
+      return { ...f, updated: r.updated ?? f.updated, created: r.created ?? f.created, description: r.description ?? f.description };
+    }));
+  }, [setFavorites]);
+
+  useEffect(() => {
+    refreshFavoriteTimestamps();
+    const id = setInterval(refreshFavoriteTimestamps, 60 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [refreshFavoriteTimestamps]);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();

@@ -312,6 +312,7 @@ export function BrowsePage() {
         }
         <InputBase
           fullWidth
+          autoFocus
           placeholder="Search apps and websites…"
           value={search}
           onChange={e => handleSearchChange(e.target.value)}
